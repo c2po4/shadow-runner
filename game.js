@@ -50,195 +50,76 @@ function resetPlayer() {
     player.invincible = 0; player.trail = [];
 }
 
-// ==================== RANDOM PLATFORM GENERATOR ====================
-function generateRandomPlatforms(config) {
-    const {
-        levelWidth,
-        groundY = 480,
-        minHeight = 200,      // höchste Plattform (y-Wert, kleiner = höher)
-        maxHeight = 440,      // niedrigste Plattform
-        maxJumpHeight = 90,   // max Höhendifferenz zwischen Plattformen
-        maxJumpWidth = 180,   // max horizontaler Abstand
-        minPlatformWidth = 60,
-        maxPlatformWidth = 150,
-        groundSegments = 4,   // Anzahl Boden-Segmente
-        floatingPlatforms = 8 // Anzahl schwebende Plattformen
-    } = config;
-
-    const platforms = [];
-    
-    // Boden-Segmente mit Lücken
-    let groundX = 0;
-    for (let i = 0; i < groundSegments; i++) {
-        const width = 200 + Math.random() * 200;
-        platforms.push({ x: groundX, y: groundY, w: width, h: 60 });
-        groundX += width + 80 + Math.random() * 100; // Lücke zwischen Boden-Segmenten
-    }
-    
-    // Schwebende Plattformen - immer erreichbar
-    let lastX = 50;
-    let lastY = groundY - 80;
-    
-    for (let i = 0; i < floatingPlatforms; i++) {
-        // Zufällige Position, aber erreichbar
-        const width = minPlatformWidth + Math.random() * (maxPlatformWidth - minPlatformWidth);
-        const heightDiff = (Math.random() - 0.5) * maxJumpHeight * 1.5; // mal hoch, mal runter
-        let newY = lastY + heightDiff;
-        
-        // Im erlaubten Bereich bleiben
-        newY = Math.max(minHeight, Math.min(maxHeight, newY));
-        
-        // Horizontaler Abstand (immer erreichbar)
-        const xDiff = 100 + Math.random() * (maxJumpWidth - 100);
-        let newX = lastX + xDiff;
-        
-        // Nicht zu weit rechts
-        if (newX + width > levelWidth - 200) {
-            newX = levelWidth - 200 - width;
-        }
-        
-        platforms.push({ x: newX, y: newY, w: width, h: 20 });
-        
-        lastX = newX;
-        lastY = newY;
-    }
-    
-    return platforms;
-}
-
-function generateRandomCoins(platforms, count) {
-    const coins = [];
-    const validPlatforms = platforms.filter(p => p.h < 30); // Nur schwebende Plattformen
-    
-    for (let i = 0; i < count && validPlatforms.length > 0; i++) {
-        const plat = validPlatforms[Math.floor(Math.random() * validPlatforms.length)];
-        coins.push({
-            x: plat.x + Math.random() * (plat.w - 20) + 10,
-            y: plat.y - 30
-        });
-    }
-    return coins;
-}
-
-function generateRandomEnemies(platforms, count, types) {
-    const enemies = [];
-    const groundPlatforms = platforms.filter(p => p.h >= 50); // Nur Boden-Plattformen
-    
-    for (let i = 0; i < count && groundPlatforms.length > 0; i++) {
-        const plat = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)];
-        const type = types[Math.floor(Math.random() * types.length)];
-        
-        const enemy = {
-            x: plat.x + Math.random() * (plat.w - 50) + 20,
-            y: plat.y - 32,
-            w: 30,
-            h: 32,
-            minX: plat.x + 10,
-            maxX: plat.x + plat.w - 40,
-            speed: 1.5 + Math.random() * 1.5,
-            type: type
-        };
-        
-        if (type === 'jumper') {
-            enemy.jumpForce = -10;
-            enemy.jumpInterval = 50 + Math.floor(Math.random() * 30);
-        } else if (type === 'flyer') {
-            enemy.y = plat.y - 100 - Math.random() * 50;
-            enemy.flyHeight = 30 + Math.random() * 30;
-        }
-        
-        enemies.push(enemy);
-    }
-    return enemies;
-}
-
-function generateRandomSpikes(platforms, count) {
-    const spikes = [];
-    const groundPlatforms = platforms.filter(p => p.h >= 50 && p.w > 100);
-    
-    for (let i = 0; i < count && groundPlatforms.length > 0; i++) {
-        const plat = groundPlatforms[Math.floor(Math.random() * groundPlatforms.length)];
-        const spikeWidth = 40 + Math.random() * 30;
-        const spikeX = plat.x + 50 + Math.random() * (plat.w - 100 - spikeWidth);
-        
-        spikes.push({ x: spikeX, y: plat.y - 15, w: spikeWidth });
-    }
-    return spikes;
-}
-
 // ==================== LEVEL DATA ====================
 function generateLevels() {
     return [
-        // Level 1: Grüne Wiesen - Randomisiert, einfach
-        (() => {
-            const platforms = generateRandomPlatforms({
-                levelWidth: 3200,
-                minHeight: 250,
-                maxHeight: 440,
-                maxJumpHeight: 85,
-                maxJumpWidth: 160,
-                groundSegments: 5,
-                floatingPlatforms: 10
-            });
-            return {
-                width: 3200,
-                platforms: platforms,
-                enemies: generateRandomEnemies(platforms, 4, ['walker']),
-                coins: generateRandomCoins(platforms, 12),
-                spikes: generateRandomSpikes(platforms, 3),
-                goal: { x: 3100, y: 420, w: 40, h: 60 },
-                playerStart: { x: 50, y: 400 }
-            };
-        })(),
-        // Level 2: Dunkle Höhle - Randomisiert, mit Decke, Jumper
-        (() => {
-            const platforms = generateRandomPlatforms({
-                levelWidth: 3400,
-                minHeight: 220,
-                maxHeight: 420,
-                maxJumpHeight: 80,
-                maxJumpWidth: 150,
-                groundSegments: 6,
-                floatingPlatforms: 12
-            });
-            // Höhlendecke hinzufügen
-            platforms.unshift({ x: 0, y: 0, w: 3400, h: 50 });
-            for (let i = 0; i < 8; i++) {
-                platforms.push({ x: 200 + i * 400, y: 50, w: 100 + Math.random() * 50, h: 30 + Math.random() * 20 });
-            }
-            return {
-                width: 3400,
-                platforms: platforms,
-                enemies: generateRandomEnemies(platforms, 6, ['walker', 'jumper', 'flyer']),
-                coins: generateRandomCoins(platforms, 15),
-                spikes: generateRandomSpikes(platforms, 4),
-                goal: { x: 3300, y: 420, w: 40, h: 60 },
-                playerStart: { x: 50, y: 400 }
-            };
-        })(),
-        // Level 3: Himmelsfestung - Randomisiert, viele Flyer, kleine Plattformen
-        (() => {
-            const platforms = generateRandomPlatforms({
-                levelWidth: 4200,
-                minHeight: 200,
-                maxHeight: 430,
-                maxJumpHeight: 75,
-                maxJumpWidth: 140,
-                minPlatformWidth: 50,
-                maxPlatformWidth: 100,
-                groundSegments: 7,
-                floatingPlatforms: 15
-            });
-            return {
-                width: 4200,
-                platforms: platforms,
-                enemies: generateRandomEnemies(platforms, 8, ['walker', 'flyer', 'flyer']),
-                coins: generateRandomCoins(platforms, 18),
-                spikes: generateRandomSpikes(platforms, 5),
-                goal: { x: 4100, y: 420, w: 40, h: 60 },
-                playerStart: { x: 50, y: 400 }
-            };
-        })(),
+        // Level 1: Grüne Wiesen - Einfach, abwechslungsreiche Routen
+        {
+            width: 3200,
+            platforms: [
+                // Start-Bereich
+                { x: 0, y: 480, w: 400, h: 60 },
+                { x: 200, y: 400, w: 120, h: 20 },
+                { x: 350, y: 330, w: 100, h: 20 },
+                // Erste Lücke
+                { x: 550, y: 480, w: 200, h: 60 },
+                { x: 600, y: 410, w: 100, h: 20 },
+                // Aufstiegs-Bereich
+                { x: 800, y: 480, w: 300, h: 60 },
+                { x: 850, y: 420, w: 80, h: 20 },
+                { x: 950, y: 360, w: 80, h: 20 },
+                { x: 1050, y: 300, w: 80, h: 20 },
+                { x: 900, y: 240, w: 100, h: 20 },
+                // Hohe Route
+                { x: 1100, y: 260, w: 80, h: 20 },
+                { x: 1250, y: 220, w: 100, h: 20 },
+                // Abstieg
+                { x: 1200, y: 480, w: 250, h: 60 },
+                { x: 1400, y: 380, w: 100, h: 20 },
+                // Zentraler Bereich
+                { x: 1550, y: 480, w: 300, h: 60 },
+                { x: 1600, y: 420, w: 80, h: 20 },
+                { x: 1700, y: 350, w: 100, h: 20 },
+                { x: 1800, y: 280, w: 80, h: 20 },
+                { x: 1650, y: 230, w: 100, h: 20 },
+                // Weiter rechts
+                { x: 1950, y: 480, w: 200, h: 60 },
+                { x: 2000, y: 400, w: 100, h: 20 },
+                // Versetzte Plattformen
+                { x: 2200, y: 480, w: 150, h: 60 },
+                { x: 2250, y: 410, w: 80, h: 20 },
+                { x: 2350, y: 340, w: 80, h: 20 },
+                { x: 2450, y: 410, w: 80, h: 20 },
+                { x: 2550, y: 350, w: 80, h: 20 },
+                { x: 2650, y: 280, w: 100, h: 20 },
+                // Ende
+                { x: 2800, y: 480, w: 400, h: 60 },
+            ],
+            enemies: [
+                { x: 600, y: 448, w: 30, h: 32, minX: 550, maxX: 720, speed: 1.5, type: 'walker' },
+                { x: 900, y: 448, w: 30, h: 32, minX: 800, maxX: 1070, speed: 1.8, type: 'walker' },
+                { x: 1650, y: 448, w: 30, h: 32, minX: 1550, maxX: 1820, speed: 1.5, type: 'walker' },
+                { x: 2250, y: 448, w: 30, h: 32, minX: 2200, maxX: 2330, speed: 2, type: 'walker' },
+                { x: 1100, y: 180, w: 32, h: 28, minX: 1000, maxX: 1300, speed: 1.3, type: 'flyer', flyHeight: 35 },
+            ],
+            coins: [
+                { x: 250, y: 450 }, { x: 650, y: 380 }, { x: 2050, y: 370 },
+                { x: 230, y: 370 }, { x: 880, y: 390 }, { x: 980, y: 330 },
+                { x: 1430, y: 350 }, { x: 1630, y: 390 }, { x: 1730, y: 320 },
+                { x: 2280, y: 380 }, { x: 2380, y: 310 }, { x: 2480, y: 380 },
+                { x: 380, y: 300 }, { x: 930, y: 210 }, { x: 1130, y: 230 },
+                { x: 1280, y: 190 }, { x: 1830, y: 250 }, { x: 1680, y: 200 },
+                { x: 2580, y: 320 }, { x: 2680, y: 250 }, { x: 2900, y: 450 },
+            ],
+            spikes: [
+                { x: 250, y: 465, w: 60 },
+                { x: 850, y: 465, w: 50 },
+                { x: 1650, y: 465, w: 50 },
+                { x: 2850, y: 465, w: 50 },
+            ],
+            goal: { x: 3100, y: 420, w: 40, h: 60 },
+            playerStart: { x: 50, y: 400 }
+        },
         // Level 2: Dunkle Höhle - mehrere Routen (unten/mitte/oben)
         // Max 90px Höhendifferenz, Decke bei y=50-90
         {
