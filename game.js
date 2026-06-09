@@ -893,20 +893,10 @@ function drawEnemies() {
             ctx.restore();
 
         } else {
-            // Walker: Standard-Gegner mit Stacheln
+            // Walker: Standard-Gegner ohne Stacheln
             // Body
             ctx.fillStyle = '#e53935';
             ctx.fillRect(ex + 2, e.y + 4, e.w - 4, e.h - 4);
-
-            // Spikes on top
-            ctx.fillStyle = '#b71c1c';
-            for (let i = 0; i < e.w; i += 8) {
-                ctx.beginPath();
-                ctx.moveTo(ex + i, e.y + 4);
-                ctx.lineTo(ex + i + 4, e.y - 4);
-                ctx.lineTo(ex + i + 8, e.y + 4);
-                ctx.fill();
-            }
 
             // Eyes
             ctx.fillStyle = '#fff';
