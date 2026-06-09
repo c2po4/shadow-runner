@@ -26,7 +26,7 @@ let bossIntroTimer = 0;
 
 // ==================== COLORS / THEME ====================
 const THEMES = [
-    { bg1: '#1a1a2e', bg2: '#16213e', ground: '#2d6a4f', groundDark: '#1b4332', platform: '#40916c', accent: '#52b788', sky: '#0f4c75', name: 'Grüne Wiesen' },
+    { bg1: '#87CEEB', bg2: '#E0F7FA', ground: '#4CAF50', groundDark: '#388E3C', platform: '#66BB6A', accent: '#81C784', sky: '#87CEEB', name: 'Grüne Wiesen' },
     { bg1: '#1a1a2e', bg2: '#0d1b2a', ground: '#4a4e69', groundDark: '#22223b', platform: '#6c757d', accent: '#9a8c98', sky: '#1b263b', name: 'Dunkle Höhle' },
     { bg1: '#ffbe0b', bg2: '#fb5607', ground: '#3a86ff', groundDark: '#2667cc', platform: '#8338ec', accent: '#ff006e', sky: '#ffbe0b', name: 'Himmelsfestung' },
     { bg1: '#10002b', bg2: '#240046', ground: '#3c096c', groundDark: '#10002b', platform: '#5a189a', accent: '#e040fb', sky: '#1a0033', name: 'Schattenreich' }
@@ -729,15 +729,13 @@ function drawBackground(theme) {
         ctx.fillRect(sx, sy, 2, 2);
     }
 
-    // Parallax mountains/shapes
+    // Parallax hills
     ctx.fillStyle = theme.bg2 + '88';
     for (let i = 0; i < 8; i++) {
         const mx = i * 200 - (cameraX * 0.2) % 200;
         const mh = 80 + (i * 47) % 60;
         ctx.beginPath();
-        ctx.moveTo(mx, H - 60);
-        ctx.lineTo(mx + 100, H - 60 - mh);
-        ctx.lineTo(mx + 200, H - 60);
+        ctx.arc(mx + 100, H - 60, mh, Math.PI, 0);
         ctx.fill();
     }
 }
