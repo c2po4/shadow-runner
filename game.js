@@ -863,7 +863,7 @@ function drawEnemies() {
             ctx.fill();
 
         } else if (e.type === 'jumper') {
-            // Springender Gegner: gedrungen mit Federn
+            // Springender Gegner: gedrungen ohne Stacheln
             const squash = e.onGround ? 1 : (e.vy < 0 ? 0.85 : 1.15);
             const stretch = e.onGround ? 1 : (e.vy < 0 ? 1.2 : 0.85);
 
@@ -874,14 +874,6 @@ function drawEnemies() {
             // Körper
             ctx.fillStyle = '#ff9800';
             ctx.fillRect(-e.w / 2 + 2, -e.h + 4, e.w - 4, e.h - 4);
-
-            // Feder oben
-            ctx.fillStyle = '#ffb74d';
-            ctx.beginPath();
-            ctx.moveTo(-3, -e.h);
-            ctx.lineTo(0, -e.h - 10);
-            ctx.lineTo(3, -e.h);
-            ctx.fill();
 
             // Augen
             ctx.fillStyle = '#fff';
