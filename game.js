@@ -18,16 +18,34 @@ const SoundManager = {
 
         switch(type) {
             case 'jump': {
+                // Bounce-Sound mit schnellem Pitch-Sweep
                 const osc = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
                 const gain = ctx.createGain();
+                const gain2 = ctx.createGain();
                 osc.connect(gain);
+                osc2.connect(gain2);
                 gain.connect(ctx.destination);
-                osc.frequency.setValueAtTime(300, now);
-                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain2.connect(ctx.destination);
+                
+                // Hauptton: schneller Sweep nach oben
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.08);
                 gain.gain.setValueAtTime(1 * soundSettings.sfx * soundSettings.jump, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                
+                // Zweiter Ton: leiser "Pop" am Anfang
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(200, now);
+                osc2.frequency.exponentialRampToValueAtTime(300, now + 0.03);
+                gain2.gain.setValueAtTime(0.3 * soundSettings.sfx * soundSettings.jump, now);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.03);
+                
                 osc.start(now);
-                osc.stop(now + 0.1);
+                osc.stop(now + 0.08);
+                osc2.start(now);
+                osc2.stop(now + 0.03);
                 break;
             }
             case 'coin': {
@@ -153,6 +171,41 @@ const SoundManager = {
                 osc.stop(now + 0.2);
                 break;
             }
+            case 'ronaldo': {
+                // "Süü" Sound - tiefer, jubelnder Ton
+                const osc = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const gain2 = ctx.createGain();
+                osc.connect(gain);
+                osc2.connect(gain2);
+                gain.connect(ctx.destination);
+                gain2.connect(ctx.destination);
+                
+                // Hauptton: "Süü" - aufsteigend mit Vibrato
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.3);
+                osc.frequency.linearRampToValueAtTime(350, now + 0.6);
+                gain.gain.setValueAtTime(0.8 * soundSettings.sfx, now);
+                gain.gain.linearRampToValueAtTime(0.6 * soundSettings.sfx, now + 0.3);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                
+                // Zweiter Ton: Harmonie für "Süü"-Effekt
+                osc2.type = 'triangle';
+                osc2.frequency.setValueAtTime(300, now);
+                osc2.frequency.linearRampToValueAtTime(600, now + 0.3);
+                osc2.frequency.linearRampToValueAtTime(525, now + 0.6);
+                gain2.gain.setValueAtTime(0.4 * soundSettings.sfx, now);
+                gain2.gain.linearRampToValueAtTime(0.3 * soundSettings.sfx, now + 0.3);
+                gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                
+                osc.start(now);
+                osc.stop(now + 0.8);
+                osc2.start(now);
+                osc2.stop(now + 0.8);
+                break;
+            }
         }
     }
 };
@@ -160,27 +213,7 @@ const SoundManager = {
 // ==================== INPUT ====================
 const keys = {};
 window.addEventListener('keydown', e => {
-    if (codeMode && gameState === STATE.MENU) {
-        if (e.code === 'Enter') {
-            if (codeInput === '4867/boss') {
-                currentLevel = 3;
-                score = 0;
-                lives = 3;
-                loadLevel(3);
-                gameState = STATE.BOSS_INTRO;
-                bossIntroTimer = 120;
-            }
-            codeMode = false;
-            codeInput = '';
-            e.preventDefault();
-            return;
-        }
-        if (e.code === 'Escape') {
-            codeMode = false;
-            codeInput = '';
-            e.preventDefault();
-            return;
-        }
+    if (gameState === STATE.CODE_MENU) {
         if (e.code === 'Backspace') {
             codeInput = codeInput.slice(0, -1);
             e.preventDefault();
@@ -201,7 +234,7 @@ function isRight() { return keys['ArrowRight'] || keys['KeyD']; }
 function isJump() { return keys['ArrowUp'] || keys['KeyW'] || keys['Space']; }
 
 // ==================== GAME STATE ====================
-const STATE = { MENU: 0, PLAYING: 1, DEAD: 2, LEVEL_COMPLETE: 3, VICTORY: 4, BOSS_INTRO: 5, SOUND_SETTINGS: 6, PAUSE: 7 };
+const STATE = { MENU: 0, PLAYING: 1, DEAD: 2, LEVEL_COMPLETE: 3, VICTORY: 4, BOSS_INTRO: 5, SOUND_SETTINGS: 6, PAUSE: 7, CODE_MENU: 8 };
 let gameState = STATE.MENU;
 let currentLevel = 0;
 let score = 0;
@@ -211,9 +244,10 @@ let cameraX = 0;
 let particles = [];
 let screenShake = 0;
 let bossIntroTimer = 0;
-let codeMode = false;
 let codeInput = '';
-let soundSettings = {
+let footballMode = false;
+let siuuTimer = 0;
+let soundSettings = JSON.parse(localStorage.getItem('soundSettings')) || {
     sfx: 0.5,
     jump: 0.5,
     coin: 0.5,
@@ -224,6 +258,10 @@ let soundMenuSelection = 0;
 let mainMenuSelection = 0;
 let pauseMenuSelection = 0;
 let previousState = STATE.MENU;
+
+function saveSoundSettings() {
+    localStorage.setItem('soundSettings', JSON.stringify(soundSettings));
+}
 
 // ==================== COLORS / THEME ====================
 const THEMES = [
@@ -681,7 +719,15 @@ function updatePlayer() {
                 player.vy = -8;
                 score += 100;
                 SoundManager.play('enemyHit');
-                spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff4444', 10, 5);
+                if (footballMode) {
+                    // Schwarz-weiße Partikel im Football Mode
+                    for (let i = 0; i < 10; i++) {
+                        const color = i % 2 === 0 ? '#000' : '#fff';
+                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, color, 1, 5);
+                    }
+                } else {
+                    spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff4444', 10, 5);
+                }
                 screenShake = 5;
             } else if (player.invincible <= 0) {
                 playerHit();
@@ -706,6 +752,10 @@ function updatePlayer() {
         gameState = STATE.LEVEL_COMPLETE;
         stateTimer = 120;
         SoundManager.play('levelComplete');
+        if (footballMode) {
+            SoundManager.play('ronaldo');
+            siuuTimer = 90;
+        }
         spawnParticles(level.goal.x + 20, level.goal.y + 30, '#00ff88', 20, 8);
     }
 
@@ -726,6 +776,7 @@ function playerHit() {
         gameState = STATE.DEAD;
         stateTimer = 120;
         SoundManager.play('death');
+        footballMode = false;
     }
 }
 
@@ -738,6 +789,7 @@ function playerDie() {
         gameState = STATE.DEAD;
         stateTimer = 120;
         SoundManager.play('death');
+        footballMode = false;
     } else {
         resetPlayer();
         player.x = level.playerStart.x;
@@ -1039,6 +1091,74 @@ function drawEnemies() {
         const ex = e.x - cameraX;
         if (ex + e.w < -50 || ex > W + 50) return;
 
+        // Football Mode: Alle Gegner als Fußbälle zeichnen
+        if (footballMode) {
+            const cx = ex + e.w / 2;
+            const cy = e.y + e.h / 2;
+            const radius = e.w / 2;
+            
+            // Fußball Basis (weiß)
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Schwarze Pentagone (echtes Fußball-Muster)
+            ctx.fillStyle = '#000';
+            
+            // Zentraler Pentagon
+            ctx.beginPath();
+            const centerSize = radius * 0.35;
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
+                const x = cx + Math.cos(angle) * centerSize;
+                const y = cy + Math.sin(angle) * centerSize;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // 5 äußere Pentagone an den Ecken
+            for (let j = 0; j < 5; j++) {
+                const baseAngle = (j * 2 * Math.PI / 5) + Math.PI / 5;
+                const dist = radius * 0.7;
+                const px = cx + Math.cos(baseAngle) * dist;
+                const py = cy + Math.sin(baseAngle) * dist;
+                
+                ctx.beginPath();
+                const outerSize = radius * 0.22;
+                for (let i = 0; i < 5; i++) {
+                    const angle = baseAngle + (i * 2 * Math.PI / 5);
+                    const x = px + Math.cos(angle) * outerSize;
+                    const y = py + Math.sin(angle) * outerSize;
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Umriss
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            // Leichter 3D-Effekt mit Gradient
+            const gradient = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, 0, cx, cy, radius);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+            gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.15)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return;
+        }
+
         if (e.type === 'flyer') {
             // Fliegender Gegner: rund mit Flügeln
             const cx = ex + e.w / 2;
@@ -1144,24 +1264,99 @@ function drawGoal() {
     const g = level.goal;
     const gx = g.x - cameraX;
 
-    // Flag pole
-    ctx.fillStyle = '#888';
-    ctx.fillRect(gx + 18, g.y, 4, g.h);
+    if (footballMode) {
+        // Fußballtor von der Seite gesehen (perspektivisch)
+        const goalWidth = 80;
+        const goalHeight = 50;
+        const goalX = gx + 10;
+        const goalY = g.y + g.h - goalHeight;
+        const depth = 20; // Tiefe des Tors
+        
+        // Torpfosten (weiß) - perspektivisch
+        ctx.fillStyle = '#fff';
+        // Vorderer linker Pfosten
+        ctx.fillRect(goalX, goalY, 5, goalHeight);
+        // Hinterer linker Pfosten (etwas kleiner/versetzt für Perspektive)
+        ctx.fillRect(goalX + depth, goalY + 5, 4, goalHeight - 10);
+        
+        // Vorderer rechter Pfosten
+        ctx.fillRect(goalX + goalWidth, goalY, 5, goalHeight);
+        // Hinterer rechter Pfosten
+        ctx.fillRect(goalX + goalWidth - depth, goalY + 5, 4, goalHeight - 10);
+        
+        // Querlatte vorne
+        ctx.fillRect(goalX, goalY, goalWidth + 5, 5);
+        // Querlatte hinten
+        ctx.fillRect(goalX + depth, goalY + 5, goalWidth - depth * 2, 4);
+        
+        // Verbindungslinien für 3D-Effekt
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        // Obere linke Verbindung
+        ctx.beginPath();
+        ctx.moveTo(goalX + 5, goalY);
+        ctx.lineTo(goalX + depth, goalY + 5);
+        ctx.stroke();
+        // Obere rechte Verbindung
+        ctx.beginPath();
+        ctx.moveTo(goalX + goalWidth, goalY);
+        ctx.lineTo(goalX + goalWidth - depth, goalY + 5);
+        ctx.stroke();
+        
+        // Netz (graue Linien) - perspektivisch
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
+        ctx.lineWidth = 1;
+        
+        // Vertikale Netzlinien (mit Perspektive)
+        for (let i = 1; i < 6; i++) {
+            const frontX = goalX + 5 + i * (goalWidth - 5) / 6;
+            const backX = goalX + depth + i * (goalWidth - depth * 2) / 6;
+            ctx.beginPath();
+            ctx.moveTo(frontX, goalY + 5);
+            ctx.lineTo(backX, goalY + 9);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(frontX, goalY + 5);
+            ctx.lineTo(frontX, goalY + goalHeight);
+            ctx.stroke();
+        }
+        
+        // Horizontale Netzlinien
+        for (let i = 1; i < 5; i++) {
+            const y = goalY + 5 + i * (goalHeight - 5) / 5;
+            ctx.beginPath();
+            ctx.moveTo(goalX + 5, y);
+            ctx.lineTo(goalX + goalWidth, y);
+            ctx.stroke();
+        }
+        
+        // Glow-Effekt
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.beginPath();
+        ctx.arc(gx + 40, g.y + 30, 35 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        // Normale Flagge
+        // Flag pole
+        ctx.fillStyle = '#888';
+        ctx.fillRect(gx + 18, g.y, 4, g.h);
 
-    // Flag
-    const wave = Math.sin(Date.now() / 200) * 3;
-    ctx.fillStyle = '#00e676';
-    ctx.beginPath();
-    ctx.moveTo(gx + 22, g.y + 5);
-    ctx.lineTo(gx + 45 + wave, g.y + 15);
-    ctx.lineTo(gx + 22, g.y + 25);
-    ctx.fill();
+        // Flag
+        const wave = Math.sin(Date.now() / 200) * 3;
+        ctx.fillStyle = '#00e676';
+        ctx.beginPath();
+        ctx.moveTo(gx + 22, g.y + 5);
+        ctx.lineTo(gx + 45 + wave, g.y + 15);
+        ctx.lineTo(gx + 22, g.y + 25);
+        ctx.fill();
 
-    // Glow
-    ctx.fillStyle = 'rgba(0, 230, 118, 0.1)';
-    ctx.beginPath();
-    ctx.arc(gx + 20, g.y + 30, 30 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
-    ctx.fill();
+        // Glow
+        ctx.fillStyle = 'rgba(0, 230, 118, 0.1)';
+        ctx.beginPath();
+        ctx.arc(gx + 20, g.y + 30, 30 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
+        ctx.fill();
+    }
 }
 
 function drawBoss() {
@@ -1278,6 +1473,23 @@ function drawHUD() {
     ctx.font = '14px monospace';
     const theme = THEMES[currentLevel];
     ctx.fillText('Level ' + (currentLevel + 1) + ' - ' + theme.name, W - 250, 30);
+
+    // SIUUU! Text im Football Mode
+    if (siuuTimer > 0) {
+        const alpha = Math.min(1, siuuTimer / 30);
+        const scale = 1 + (90 - siuuTimer) * 0.02;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#fff';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 4;
+        ctx.font = `bold ${Math.floor(48 * scale)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.strokeText('SIUUU!', W / 2, H / 2 - 50);
+        ctx.fillText('SIUUU!', W / 2, H / 2 - 50);
+        ctx.restore();
+        ctx.textAlign = 'left';
+    }
 }
 
 // ==================== SCREENS ====================
@@ -1308,7 +1520,7 @@ function drawMenu() {
     ctx.fillText('Ein Jump & Run Abenteuer', W / 2, 180);
 
     // Menu options
-    const menuItems = ['Spielen', 'Soundeinstellungen'];
+    const menuItems = ['Spielen', 'Soundeinstellungen', 'Code eingeben'];
     ctx.font = 'bold 24px monospace';
     menuItems.forEach((item, i) => {
         const y = 260 + i * 50;
@@ -1325,18 +1537,6 @@ function drawMenu() {
     ctx.fillStyle = '#666';
     ctx.font = '14px monospace';
     ctx.fillText('ENTER / E / LEERTASTE: Auswählen', W / 2, 420);
-    ctx.fillText('C: Code eingeben', W / 2, 445);
-
-    if (codeMode) {
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
-        ctx.fillRect(W / 2 - 150, 340, 300, 40);
-        ctx.strokeStyle = '#e040fb';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(W / 2 - 150, 340, 300, 40);
-        ctx.fillStyle = '#fff';
-        ctx.font = '20px monospace';
-        ctx.fillText(codeInput + (Math.sin(Date.now() / 200) > 0 ? '|' : ''), W / 2, 366);
-    }
 
     ctx.textAlign = 'left';
 }
@@ -1432,6 +1632,36 @@ function drawPauseMenu() {
     ctx.fillStyle = '#666';
     ctx.font = '14px monospace';
     ctx.fillText('Pfeiltasten: Auswählen | ENTER / E / LEERTASTE: Bestätigen | ESC: Zurück', W / 2, 480);
+
+    ctx.textAlign = 'left';
+}
+
+function drawCodeMenu() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = '#0d47a1';
+    ctx.font = 'bold 40px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('CODE EINGABE', W / 2, 120);
+
+    // Code input field
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(W / 2 - 200, 220, 400, 60);
+    ctx.strokeStyle = '#e040fb';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W / 2 - 200, 220, 400, 60);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = '28px monospace';
+    ctx.fillText(codeInput + (Math.sin(Date.now() / 200) > 0 ? '|' : ''), W / 2, 258);
+
+    // Instructions
+    ctx.fillStyle = '#888';
+    ctx.font = '16px monospace';
+    ctx.fillText('Tippe den Code ein und drücke ENTER', W / 2, 330);
+    ctx.fillText('ESC: Zurück zum Hauptmenü', W / 2, 360);
 
     ctx.textAlign = 'left';
 }
@@ -1556,42 +1786,40 @@ function drawBossIntro() {
 function update() {
     switch (gameState) {
         case STATE.MENU:
-            if (keys['KeyC'] && !codeMode) {
-                codeMode = true;
-                codeInput = '';
-                keys['KeyC'] = false;
+            if (keys['ArrowUp'] || keys['KeyW']) {
+                mainMenuSelection = Math.max(0, mainMenuSelection - 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowUp'] = false;
+                keys['KeyW'] = false;
             }
-            if (!codeMode) {
-                if (keys['ArrowUp'] || keys['KeyW']) {
-                    mainMenuSelection = Math.max(0, mainMenuSelection - 1);
+            if (keys['ArrowDown'] || keys['KeyS']) {
+                mainMenuSelection = Math.min(2, mainMenuSelection + 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowDown'] = false;
+                keys['KeyS'] = false;
+            }
+            if (keys['Enter'] || keys['Space'] || keys['KeyE']) {
+                if (mainMenuSelection === 0) {
+                    gameState = STATE.PLAYING;
+                    currentLevel = 0;
+                    score = 0;
+                    lives = 3;
+                    loadLevel(0);
                     SoundManager.play('menuSelect');
-                    keys['ArrowUp'] = false;
-                    keys['KeyW'] = false;
-                }
-                if (keys['ArrowDown'] || keys['KeyS']) {
-                    mainMenuSelection = Math.min(1, mainMenuSelection + 1);
+                } else if (mainMenuSelection === 1) {
+                    previousState = STATE.MENU;
+                    gameState = STATE.SOUND_SETTINGS;
+                    soundMenuSelection = 0;
                     SoundManager.play('menuSelect');
-                    keys['ArrowDown'] = false;
-                    keys['KeyS'] = false;
+                } else if (mainMenuSelection === 2) {
+                    previousState = STATE.MENU;
+                    gameState = STATE.CODE_MENU;
+                    codeInput = '';
+                    SoundManager.play('menuSelect');
                 }
-                if (keys['Enter'] || keys['Space'] || keys['KeyE']) {
-                    if (mainMenuSelection === 0) {
-                        gameState = STATE.PLAYING;
-                        currentLevel = 0;
-                        score = 0;
-                        lives = 3;
-                        loadLevel(0);
-                        SoundManager.play('menuSelect');
-                    } else if (mainMenuSelection === 1) {
-                        previousState = STATE.MENU;
-                        gameState = STATE.SOUND_SETTINGS;
-                        soundMenuSelection = 0;
-                        SoundManager.play('menuSelect');
-                    }
-                    keys['Enter'] = false;
-                    keys['Space'] = false;
-                    keys['KeyE'] = false;
-                }
+                keys['Enter'] = false;
+                keys['Space'] = false;
+                keys['KeyE'] = false;
             }
             break;
 
@@ -1611,16 +1839,45 @@ function update() {
             }
             if (keys['ArrowRight'] || keys['KeyD']) {
                 soundSettings[soundKeys[soundMenuSelection]] = Math.min(1, soundSettings[soundKeys[soundMenuSelection]] + 0.1);
+                saveSoundSettings();
                 keys['ArrowRight'] = false;
                 keys['KeyD'] = false;
             }
             if (keys['ArrowLeft'] || keys['KeyA']) {
                 soundSettings[soundKeys[soundMenuSelection]] = Math.max(0, soundSettings[soundKeys[soundMenuSelection]] - 0.1);
+                saveSoundSettings();
                 keys['ArrowLeft'] = false;
                 keys['KeyA'] = false;
             }
             if (keys['Escape']) {
                 gameState = previousState;
+                SoundManager.play('menuSelect');
+                keys['Escape'] = false;
+            }
+            break;
+
+        case STATE.CODE_MENU:
+            if (keys['Enter']) {
+                if (codeInput === '4867/boss') {
+                    currentLevel = 3;
+                    score = 0;
+                    lives = 3;
+                    loadLevel(3);
+                    gameState = STATE.BOSS_INTRO;
+                    bossIntroTimer = 120;
+                    SoundManager.play('menuSelect');
+                } else if (codeInput === '_5646') {
+                    footballMode = true;
+                    SoundManager.play('ronaldo');
+                    codeInput = 'SIUUU!';
+                } else {
+                    codeInput = '';
+                }
+                keys['Enter'] = false;
+            }
+            if (keys['Escape']) {
+                gameState = previousState;
+                codeInput = '';
                 SoundManager.play('menuSelect');
                 keys['Escape'] = false;
             }
@@ -1676,6 +1933,7 @@ function update() {
                 if (level.boss) updateBoss();
                 updateParticles();
                 if (screenShake > 0) screenShake--;
+                if (siuuTimer > 0) siuuTimer--;
             }
             break;
 
@@ -1699,6 +1957,7 @@ function update() {
         case STATE.LEVEL_COMPLETE:
             stateTimer--;
             updateParticles();
+            if (siuuTimer > 0) siuuTimer--;
             if (stateTimer <= 0) {
                 currentLevel++;
                 if (currentLevel >= levels.length) {
@@ -1745,6 +2004,10 @@ function draw() {
 
         case STATE.SOUND_SETTINGS:
             drawSoundSettings();
+            break;
+
+        case STATE.CODE_MENU:
+            drawCodeMenu();
             break;
 
         case STATE.PLAYING:
