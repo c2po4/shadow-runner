@@ -3,9 +3,197 @@ const ctx = canvas.getContext('2d');
 const W = canvas.width;
 const H = canvas.height;
 
+// ==================== SOUND MANAGER ====================
+const SoundManager = {
+    ctx: null,
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+    },
+    play(type) {
+        this.init();
+        const ctx = this.ctx;
+        const now = ctx.currentTime;
+
+        switch(type) {
+            case 'jump': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(1 * soundSettings.sfx * soundSettings.jump, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            }
+            case 'coin': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(800, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
+                gain.gain.setValueAtTime(0.4 * soundSettings.sfx * soundSettings.coin, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            }
+            case 'enemyHit': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.2);
+                gain.gain.setValueAtTime(0.5 * soundSettings.sfx * soundSettings.combat, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+                break;
+            }
+            case 'playerHit': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+                gain.gain.setValueAtTime(0.6 * soundSettings.sfx * soundSettings.damage, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+                osc.start(now);
+                osc.stop(now + 0.3);
+                break;
+            }
+            case 'death': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(50, now + 0.5);
+                gain.gain.setValueAtTime(0.7 * soundSettings.sfx * soundSettings.damage, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+                osc.start(now);
+                osc.stop(now + 0.5);
+                break;
+            }
+            case 'levelComplete': {
+                [523, 659, 784, 1047].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(freq, now + i * 0.1);
+                    gain.gain.setValueAtTime(0.5 * soundSettings.sfx, now + i * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.2);
+                    osc.start(now + i * 0.1);
+                    osc.stop(now + i * 0.1 + 0.2);
+                });
+                break;
+            }
+            case 'victory': {
+                [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(freq, now + i * 0.15);
+                    gain.gain.setValueAtTime(0.6 * soundSettings.sfx, now + i * 0.15);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.15 + 0.3);
+                    osc.start(now + i * 0.15);
+                    osc.stop(now + i * 0.15 + 0.3);
+                });
+                break;
+            }
+            case 'menuSelect': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.setValueAtTime(600, now);
+                gain.gain.setValueAtTime(0.4 * soundSettings.sfx, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                osc.start(now);
+                osc.stop(now + 0.1);
+                break;
+            }
+            case 'bossHit': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, now);
+                osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.6 * soundSettings.sfx * soundSettings.combat, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+                break;
+            }
+            case 'bossAttack': {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.exponentialRampToValueAtTime(300, now + 0.2);
+                gain.gain.setValueAtTime(0.5 * soundSettings.sfx * soundSettings.combat, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.start(now);
+                osc.stop(now + 0.2);
+                break;
+            }
+        }
+    }
+};
+
 // ==================== INPUT ====================
 const keys = {};
-window.addEventListener('keydown', e => { keys[e.code] = true; e.preventDefault(); });
+window.addEventListener('keydown', e => {
+    if (codeMode && gameState === STATE.MENU) {
+        if (e.code === 'Enter') {
+            if (codeInput === '4867/boss') {
+                currentLevel = 3;
+                score = 0;
+                lives = 3;
+                loadLevel(3);
+                gameState = STATE.BOSS_INTRO;
+                bossIntroTimer = 120;
+            }
+            codeMode = false;
+            codeInput = '';
+            e.preventDefault();
+            return;
+        }
+        if (e.code === 'Escape') {
+            codeMode = false;
+            codeInput = '';
+            e.preventDefault();
+            return;
+        }
+        if (e.code === 'Backspace') {
+            codeInput = codeInput.slice(0, -1);
+            e.preventDefault();
+            return;
+        }
+        if (e.key.length === 1) {
+            codeInput += e.key.toLowerCase();
+            e.preventDefault();
+            return;
+        }
+    }
+    keys[e.code] = true; e.preventDefault();
+});
 window.addEventListener('keyup', e => { keys[e.code] = false; e.preventDefault(); });
 
 function isLeft() { return keys['ArrowLeft'] || keys['KeyA']; }
@@ -13,7 +201,7 @@ function isRight() { return keys['ArrowRight'] || keys['KeyD']; }
 function isJump() { return keys['ArrowUp'] || keys['KeyW'] || keys['Space']; }
 
 // ==================== GAME STATE ====================
-const STATE = { MENU: 0, PLAYING: 1, DEAD: 2, LEVEL_COMPLETE: 3, VICTORY: 4, BOSS_INTRO: 5 };
+const STATE = { MENU: 0, PLAYING: 1, DEAD: 2, LEVEL_COMPLETE: 3, VICTORY: 4, BOSS_INTRO: 5, SOUND_SETTINGS: 6, PAUSE: 7 };
 let gameState = STATE.MENU;
 let currentLevel = 0;
 let score = 0;
@@ -23,6 +211,19 @@ let cameraX = 0;
 let particles = [];
 let screenShake = 0;
 let bossIntroTimer = 0;
+let codeMode = false;
+let codeInput = '';
+let soundSettings = {
+    sfx: 0.5,
+    jump: 0.5,
+    coin: 0.5,
+    combat: 0.5,
+    damage: 0.5
+};
+let soundMenuSelection = 0;
+let mainMenuSelection = 0;
+let pauseMenuSelection = 0;
+let previousState = STATE.MENU;
 
 // ==================== COLORS / THEME ====================
 const THEMES = [
@@ -397,6 +598,7 @@ function updatePlayer() {
         player.vy = player.jumpForce;
         player.onGround = false;
         player.jumping = true;
+        SoundManager.play('jump');
         spawnParticles(player.x + player.w / 2, player.y + player.h, '#fff', 5, 3);
     }
     if (!isJump()) player.jumping = false;
@@ -478,6 +680,7 @@ function updatePlayer() {
                 e.alive = false;
                 player.vy = -8;
                 score += 100;
+                SoundManager.play('enemyHit');
                 spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff4444', 10, 5);
                 screenShake = 5;
             } else if (player.invincible <= 0) {
@@ -493,6 +696,7 @@ function updatePlayer() {
         if (rectCollide(player, coinRect)) {
             c.collected = true;
             score += 50;
+            SoundManager.play('coin');
             spawnParticles(c.x, c.y, '#ffd700', 8, 4);
         }
     });
@@ -501,6 +705,7 @@ function updatePlayer() {
     if (level.goal && rectCollide(player, level.goal)) {
         gameState = STATE.LEVEL_COMPLETE;
         stateTimer = 120;
+        SoundManager.play('levelComplete');
         spawnParticles(level.goal.x + 20, level.goal.y + 30, '#00ff88', 20, 8);
     }
 
@@ -515,20 +720,24 @@ function playerHit() {
     lives--;
     player.invincible = 90;
     screenShake = 10;
+    SoundManager.play('playerHit');
     spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#ff0000', 10, 6);
     if (lives <= 0) {
         gameState = STATE.DEAD;
         stateTimer = 120;
+        SoundManager.play('death');
     }
 }
 
 function playerDie() {
     lives--;
     screenShake = 10;
+    SoundManager.play('playerHit');
     spawnParticles(player.x + player.w / 2, player.y + player.h / 2, '#ff0000', 15, 8);
     if (lives <= 0) {
         gameState = STATE.DEAD;
         stateTimer = 120;
+        SoundManager.play('death');
     } else {
         resetPlayer();
         player.x = level.playerStart.x;
@@ -610,6 +819,7 @@ function updateBoss() {
     if (boss.attackTimer >= attackInterval) {
         boss.attackTimer = 0;
         boss.attackType = (boss.attackType + 1) % 3;
+        SoundManager.play('bossAttack');
 
         if (boss.attackType === 0) {
             // Shoot projectiles toward player
@@ -699,10 +909,12 @@ function updateBoss() {
             player.vy = -10;
             score += 200;
             screenShake = 8;
+            SoundManager.play('bossHit');
             spawnParticles(boss.x + boss.w / 2, boss.y, '#ff00ff', 10, 6);
             if (boss.hp <= 0) {
                 gameState = STATE.VICTORY;
                 stateTimer = 180;
+                SoundManager.play('victory');
                 spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 40, 12);
                 spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff00ff', 30, 10);
                 screenShake = 20;
@@ -1085,39 +1297,141 @@ function drawMenu() {
     }
 
     // Title
-    ctx.fillStyle = '#e040fb';
+    ctx.fillStyle = '#0d47a1';
     ctx.font = 'bold 56px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('SHADOW RUNNER', W / 2, 160);
-
-    ctx.fillStyle = '#7c4dff';
-    ctx.font = 'bold 58px monospace';
-    ctx.fillText('SHADOW RUNNER', W / 2 + 2, 162);
+    ctx.fillText('SHADOW RUNNER', W / 2, 140);
 
     // Subtitle
     ctx.fillStyle = '#aaa';
     ctx.font = '18px monospace';
-    ctx.fillText('Ein Jump & Run Abenteuer', W / 2, 200);
+    ctx.fillText('Ein Jump & Run Abenteuer', W / 2, 180);
+
+    // Menu options
+    const menuItems = ['Spielen', 'Soundeinstellungen'];
+    ctx.font = 'bold 24px monospace';
+    menuItems.forEach((item, i) => {
+        const y = 260 + i * 50;
+        if (i === mainMenuSelection) {
+            ctx.fillStyle = '#e040fb';
+            ctx.fillText('> ' + item + ' <', W / 2, y);
+        } else {
+            ctx.fillStyle = '#888';
+            ctx.fillText(item, W / 2, y);
+        }
+    });
 
     // Instructions
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px monospace';
-    const blink = Math.sin(Date.now() / 300) > 0;
-    if (blink) ctx.fillText('Drücke ENTER zum Starten', W / 2, 320);
-
-    ctx.fillStyle = '#888';
+    ctx.fillStyle = '#666';
     ctx.font = '14px monospace';
-    ctx.fillText('Pfeiltasten / WASD: Bewegen', W / 2, 380);
-    ctx.fillText('Leertaste / W / Up: Springen', W / 2, 405);
-    ctx.fillText('Besiege den Schattenlord im finalen Bosskampf!', W / 2, 440);
+    ctx.fillText('ENTER / E / LEERTASTE: Auswählen', W / 2, 420);
+    ctx.fillText('C: Code eingeben', W / 2, 445);
 
-    // Player preview
-    ctx.fillStyle = '#2196f3';
-    ctx.fillRect(W / 2 - 14, 250, 28, 36);
-    ctx.fillStyle = '#42a5f5';
-    ctx.fillRect(W / 2 - 10, 242, 20, 12);
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(W / 2 + 2, 245, 5, 5);
+    if (codeMode) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(W / 2 - 150, 340, 300, 40);
+        ctx.strokeStyle = '#e040fb';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(W / 2 - 150, 340, 300, 40);
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px monospace';
+        ctx.fillText(codeInput + (Math.sin(Date.now() / 200) > 0 ? '|' : ''), W / 2, 366);
+    }
+
+    ctx.textAlign = 'left';
+}
+
+function drawSoundSettings() {
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = '#0d47a1';
+    ctx.font = 'bold 40px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('SOUNDEINSTELLUNGEN', W / 2, 80);
+
+    // Sound categories
+    const categories = [
+        { key: 'sfx', name: 'Effekte (Gesamt)' },
+        { key: 'jump', name: 'Springen' },
+        { key: 'coin', name: 'Münzen' },
+        { key: 'combat', name: 'Kampf' },
+        { key: 'damage', name: 'Schaden' }
+    ];
+
+    ctx.font = '20px monospace';
+    categories.forEach((cat, i) => {
+        const y = 160 + i * 60;
+        const value = soundSettings[cat.key];
+
+        // Selection highlight
+        if (i === soundMenuSelection) {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(W / 2 - 200, y - 25, 400, 45);
+            ctx.fillStyle = '#e040fb';
+        } else {
+            ctx.fillStyle = '#aaa';
+        }
+
+        // Category name
+        ctx.textAlign = 'left';
+        ctx.fillText(cat.name, W / 2 - 180, y);
+
+        // Volume bar
+        ctx.fillStyle = '#444';
+        ctx.fillRect(W / 2 + 60, y - 15, 120, 20);
+        ctx.fillStyle = '#4CAF50';
+        ctx.fillRect(W / 2 + 60, y - 15, 120 * value, 20);
+        ctx.strokeStyle = '#666';
+        ctx.strokeRect(W / 2 + 60, y - 15, 120, 20);
+
+        // Percentage
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(Math.round(value * 100) + '%', W / 2 + 220, y);
+        ctx.font = '20px monospace';
+    });
+
+    // Instructions
+    ctx.fillStyle = '#666';
+    ctx.font = '14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('Pfeiltasten: Auswählen | Links/Rechts: Lautstärke | ESC: Zurück', W / 2, 500);
+
+    ctx.textAlign = 'left';
+}
+
+function drawPauseMenu() {
+    // Semi-transparent overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = '#0d47a1';
+    ctx.font = 'bold 48px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSE', W / 2, 150);
+
+    // Menu options
+    const menuItems = ['Weiterspielen', 'Soundeinstellungen', 'Zum Hauptmenü'];
+    ctx.font = 'bold 24px monospace';
+    menuItems.forEach((item, i) => {
+        const y = 250 + i * 60;
+        if (i === pauseMenuSelection) {
+            ctx.fillStyle = '#e040fb';
+            ctx.fillText('> ' + item + ' <', W / 2, y);
+        } else {
+            ctx.fillStyle = '#888';
+            ctx.fillText(item, W / 2, y);
+        }
+    });
+
+    // Instructions
+    ctx.fillStyle = '#666';
+    ctx.font = '14px monospace';
+    ctx.fillText('Pfeiltasten: Auswählen | ENTER / E / LEERTASTE: Bestätigen | ESC: Zurück', W / 2, 480);
 
     ctx.textAlign = 'left';
 }
@@ -1126,14 +1440,19 @@ function drawDeadScreen() {
     ctx.fillStyle = 'rgba(0,0,0,0.8)';
     ctx.fillRect(0, 0, W, H);
 
+    ctx.save();
+    ctx.shadowColor = '#ff0000';
+    ctx.shadowBlur = 20;
     ctx.fillStyle = '#ff1744';
-    ctx.font = 'bold 48px monospace';
+    ctx.font = 'bold 72px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('GAME OVER', W / 2, H / 2 - 40);
+    ctx.restore();
 
     ctx.fillStyle = '#ffd700';
     ctx.font = '20px monospace';
-    ctx.fillText('Punkte: ' + score, W / 2, H / 2 + 10);
+    ctx.textAlign = 'center';
+    ctx.fillText('Punkte: ' + score, W / 2, H / 2 + 30);
 
     ctx.fillStyle = '#aaa';
     ctx.font = '16px monospace';
@@ -1237,23 +1556,127 @@ function drawBossIntro() {
 function update() {
     switch (gameState) {
         case STATE.MENU:
-            if (keys['Enter'] || keys['Space']) {
-                gameState = STATE.PLAYING;
-                currentLevel = 0;
-                score = 0;
-                lives = 3;
-                loadLevel(0);
+            if (keys['KeyC'] && !codeMode) {
+                codeMode = true;
+                codeInput = '';
+                keys['KeyC'] = false;
+            }
+            if (!codeMode) {
+                if (keys['ArrowUp'] || keys['KeyW']) {
+                    mainMenuSelection = Math.max(0, mainMenuSelection - 1);
+                    SoundManager.play('menuSelect');
+                    keys['ArrowUp'] = false;
+                    keys['KeyW'] = false;
+                }
+                if (keys['ArrowDown'] || keys['KeyS']) {
+                    mainMenuSelection = Math.min(1, mainMenuSelection + 1);
+                    SoundManager.play('menuSelect');
+                    keys['ArrowDown'] = false;
+                    keys['KeyS'] = false;
+                }
+                if (keys['Enter'] || keys['Space'] || keys['KeyE']) {
+                    if (mainMenuSelection === 0) {
+                        gameState = STATE.PLAYING;
+                        currentLevel = 0;
+                        score = 0;
+                        lives = 3;
+                        loadLevel(0);
+                        SoundManager.play('menuSelect');
+                    } else if (mainMenuSelection === 1) {
+                        previousState = STATE.MENU;
+                        gameState = STATE.SOUND_SETTINGS;
+                        soundMenuSelection = 0;
+                        SoundManager.play('menuSelect');
+                    }
+                    keys['Enter'] = false;
+                    keys['Space'] = false;
+                    keys['KeyE'] = false;
+                }
+            }
+            break;
+
+        case STATE.SOUND_SETTINGS:
+            const soundKeys = ['sfx', 'jump', 'coin', 'combat', 'damage'];
+            if (keys['ArrowUp'] || keys['KeyW']) {
+                soundMenuSelection = Math.max(0, soundMenuSelection - 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowUp'] = false;
+                keys['KeyW'] = false;
+            }
+            if (keys['ArrowDown'] || keys['KeyS']) {
+                soundMenuSelection = Math.min(4, soundMenuSelection + 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowDown'] = false;
+                keys['KeyS'] = false;
+            }
+            if (keys['ArrowRight'] || keys['KeyD']) {
+                soundSettings[soundKeys[soundMenuSelection]] = Math.min(1, soundSettings[soundKeys[soundMenuSelection]] + 0.1);
+                keys['ArrowRight'] = false;
+                keys['KeyD'] = false;
+            }
+            if (keys['ArrowLeft'] || keys['KeyA']) {
+                soundSettings[soundKeys[soundMenuSelection]] = Math.max(0, soundSettings[soundKeys[soundMenuSelection]] - 0.1);
+                keys['ArrowLeft'] = false;
+                keys['KeyA'] = false;
+            }
+            if (keys['Escape']) {
+                gameState = previousState;
+                SoundManager.play('menuSelect');
+                keys['Escape'] = false;
+            }
+            break;
+
+        case STATE.PAUSE:
+            if (keys['ArrowUp'] || keys['KeyW']) {
+                pauseMenuSelection = Math.max(0, pauseMenuSelection - 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowUp'] = false;
+                keys['KeyW'] = false;
+            }
+            if (keys['ArrowDown'] || keys['KeyS']) {
+                pauseMenuSelection = Math.min(2, pauseMenuSelection + 1);
+                SoundManager.play('menuSelect');
+                keys['ArrowDown'] = false;
+                keys['KeyS'] = false;
+            }
+            if (keys['Enter'] || keys['Space'] || keys['KeyE']) {
+                if (pauseMenuSelection === 0) {
+                    gameState = STATE.PLAYING;
+                    SoundManager.play('menuSelect');
+                } else if (pauseMenuSelection === 1) {
+                    previousState = STATE.PAUSE;
+                    gameState = STATE.SOUND_SETTINGS;
+                    soundMenuSelection = 0;
+                    SoundManager.play('menuSelect');
+                } else if (pauseMenuSelection === 2) {
+                    gameState = STATE.MENU;
+                    mainMenuSelection = 0;
+                    SoundManager.play('menuSelect');
+                }
                 keys['Enter'] = false;
                 keys['Space'] = false;
+                keys['KeyE'] = false;
+            }
+            if (keys['Escape']) {
+                gameState = STATE.PLAYING;
+                SoundManager.play('menuSelect');
+                keys['Escape'] = false;
             }
             break;
 
         case STATE.PLAYING:
-            updatePlayer();
-            updateEnemies();
-            if (level.boss) updateBoss();
-            updateParticles();
-            if (screenShake > 0) screenShake--;
+            if (keys['Escape']) {
+                gameState = STATE.PAUSE;
+                pauseMenuSelection = 0;
+                SoundManager.play('menuSelect');
+                keys['Escape'] = false;
+            } else {
+                updatePlayer();
+                updateEnemies();
+                if (level.boss) updateBoss();
+                updateParticles();
+                if (screenShake > 0) screenShake--;
+            }
             break;
 
         case STATE.BOSS_INTRO:
@@ -1265,6 +1688,7 @@ function update() {
 
         case STATE.DEAD:
             stateTimer--;
+            screenShake = 0;
             updateParticles();
             if ((keys['KeyR'] || stateTimer <= 0) && keys['KeyR']) {
                 gameState = STATE.MENU;
@@ -1305,6 +1729,10 @@ function update() {
 function draw() {
     ctx.save();
 
+    // Glattere Textdarstellung
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     // Screen shake
     if (screenShake > 0) {
         ctx.translate((Math.random() - 0.5) * screenShake * 2, (Math.random() - 0.5) * screenShake * 2);
@@ -1313,6 +1741,10 @@ function draw() {
     switch (gameState) {
         case STATE.MENU:
             drawMenu();
+            break;
+
+        case STATE.SOUND_SETTINGS:
+            drawSoundSettings();
             break;
 
         case STATE.PLAYING:
@@ -1329,6 +1761,21 @@ function draw() {
             drawParticles();
             drawHUD();
             if (gameState === STATE.BOSS_INTRO) drawBossIntro();
+            break;
+
+        case STATE.PAUSE:
+            const pauseTheme = THEMES[currentLevel];
+            drawBackground(pauseTheme);
+            drawPlatforms(pauseTheme);
+            drawSpikes(pauseTheme);
+            drawCoins();
+            drawGoal();
+            drawEnemies();
+            drawPlayer();
+            if (level.boss) drawBoss();
+            drawParticles();
+            drawHUD();
+            drawPauseMenu();
             break;
 
         case STATE.DEAD:

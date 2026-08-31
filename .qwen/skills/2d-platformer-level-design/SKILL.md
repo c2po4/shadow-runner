@@ -19,6 +19,35 @@ Example:
 
 **Rule:** Platform height differences should be ≤ 90-95% of max jump height to account for player positioning and timing.
 
+## Theme and Visual Design
+
+### Color Themes
+**Match colors to level name and mood:**
+- "Grüne Wiesen" (Green Meadows): Bright sky blue (#87CEEB), vibrant greens (#4CAF50), light and cheerful
+- "Dunkle Höhle" (Dark Cave): Dark blues/grays, muted colors, oppressive atmosphere
+- "Himmelsfestung" (Sky Fortress): Bright oranges/yellows, fantastical colors
+- "Schattenreich" (Shadow Realm): Deep purples/blacks, ominous atmosphere
+
+**Never:** Use dark, oppressive colors for levels with friendly names
+
+### Background Elements
+**Background decorations should match the theme:**
+- Meadows: Rolling hills (use arc() for rounded shapes)
+- Caves: Stalactites hanging from ceiling
+- Sky: Clouds, floating islands
+- Shadow realm: Dark silhouettes, eerie shapes
+
+**Avoid:** Generic shapes that don't fit (pyramids in meadows, etc.)
+
+### Enemy Visual Design
+**Enemy appearance should match their behavior:**
+- Enemies you can stomp: NO spikes on top, smooth/rounded tops
+- Enemies that hurt on touch: Can have spikes/spiky appearance
+- Flyers: Wings or floating appearance
+- Jumpers: Spring-like or bouncy visual cues
+
+**Critical:** If player can jump ON an enemy, it must NOT have spikes on top
+
 ## Level Structure
 
 ### Avoid Repetitive Patterns
