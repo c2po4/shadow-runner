@@ -279,7 +279,7 @@ const THEMES = [
 const player = {
     x: 50, y: 300, w: 28, h: 36,
     vx: 0, vy: 0,
-    speed: 4.5, jumpForce: -13, gravity: 0.5,
+    speed: 4.5, jumpForce: -11, gravity: 0.5,
     onGround: false, jumping: false,
     facing: 1, frame: 0, frameTimer: 0,
     invincible: 0, dashCooldown: 0,
@@ -1074,24 +1074,34 @@ function updateBoss() {
 
     // Player stomp on boss
     if (rectCollide(player, boss) && player.invincible <= 0) {
-        if (player.vy > 0 && player.y + player.h - boss.y < 20 && boss.invincible <= 0) {
-            boss.hp--;
-            boss.invincible = 30;
-            boss.shakeTimer = 10;
-            player.vy = -10;
-            score += 200;
-            screenShake = 8;
-            SoundManager.play('bossHit');
-            spawnParticles(boss.x + boss.w / 2, boss.y, '#ff00ff', 10, 6);
-            if (boss.hp <= 0) {
-                gameState = STATE.VICTORY;
-                stateTimer = 180;
-                SoundManager.play('victory');
-                spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 40, 12);
-                spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff00ff', 30, 10);
-                screenShake = 20;
+        // Check if player is hitting the top of the boss (head area)
+        const headHit = player.y + player.h - boss.y < 30;
+
+        if (headHit) {
+            // Hitting the head: Stomp! No damage to player, even if boss is jumping
+            if (boss.invincible <= 0) {
+                boss.hp--;
+                boss.invincible = 30;
+                boss.shakeTimer = 10;
+                player.vy = -10;
+                score += 200;
+                screenShake = 8;
+                SoundManager.play('bossHit');
+                spawnParticles(boss.x + boss.w / 2, boss.y, '#ff00ff', 10, 6);
+                if (boss.hp <= 0) {
+                    gameState = STATE.VICTORY;
+                    stateTimer = 180;
+                    SoundManager.play('victory');
+                    spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ffd700', 40, 12);
+                    spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff00ff', 30, 10);
+                    screenShake = 20;
+                }
+            } else {
+                // Boss is invincible, just bounce player up
+                player.vy = -8;
             }
         } else {
+            // Hit the body or sides: Take damage
             playerHit();
         }
     }
