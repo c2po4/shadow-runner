@@ -557,7 +557,8 @@ function generateLevels() {
                 vx: 0, vy: 0,
                 projectiles: [],
                 invincible: 0,
-                shakeTimer: 0
+                shakeTimer: 0,
+                warningTimer: 0
             },
             playerStart: { x: 50, y: 400 }
         }
@@ -906,16 +907,33 @@ function updateBoss() {
 
     if (boss.invincible > 0) boss.invincible--;
     if (boss.shakeTimer > 0) boss.shakeTimer--;
+    if (boss.warningTimer > 0) boss.warningTimer--;
 
     // Phase transitions
     if (boss.hp <= boss.maxHp * 0.3 && boss.phase < 3) {
         boss.phase = 3;
         screenShake = 15;
+        boss.warningTimer = 60;
         spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff00ff', 30, 10);
+        SoundManager.play('bossPhase');
     } else if (boss.hp <= boss.maxHp * 0.6 && boss.phase < 2) {
         boss.phase = 2;
         screenShake = 10;
+        boss.warningTimer = 60;
         spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#ff4400', 20, 8);
+        SoundManager.play('bossPhase');
+    }
+
+    // Boss AI - smarter movement
+    const dx = player.x - boss.x;
+    const dist = Math.abs(dx);
+    
+    // Boss tries to maintain optimal distance
+    const optimalDist = 200;
+    if (dist < optimalDist - 50) {
+        boss.vx += (dx > 0 ? -0.3 : 0.3); // Move away
+    } else if (dist > optimalDist + 50) {
+        boss.vx += (dx > 0 ? 0.3 : -0.3); // Move closer
     }
 
     // Boss AI
@@ -924,41 +942,62 @@ function updateBoss() {
 
     if (boss.attackTimer >= attackInterval) {
         boss.attackTimer = 0;
-        boss.attackType = (boss.attackType + 1) % 3;
+        boss.attackType = Math.floor(Math.random() * (boss.phase + 3)); // More attack types in higher phases
+        boss.warningTimer = 30; // Warning before attack
         SoundManager.play('bossAttack');
 
         if (boss.attackType === 0) {
             // Shoot projectiles toward player
-            const dx = player.x - boss.x;
             const dy = player.y - boss.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
+            const distance = Math.sqrt(dx * dx + dy * dy);
             const speed = 4 + boss.phase;
             boss.projectiles.push({
                 x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
-                vx: (dx / dist) * speed, vy: (dy / dist) * speed,
-                size: 8, life: 120
+                vx: (dx / distance) * speed, vy: (dy / distance) * speed,
+                size: 8, life: 120, type: 'normal'
             });
             if (boss.phase >= 2) {
                 boss.projectiles.push({
                     x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
-                    vx: (dx / dist) * speed * 0.8, vy: (dy / dist) * speed * 0.8 - 2,
-                    size: 6, life: 120
+                    vx: (dx / distance) * speed * 0.8, vy: (dy / distance) * speed * 0.8 - 2,
+                    size: 6, life: 120, type: 'normal'
                 });
             }
         } else if (boss.attackType === 1) {
             // Jump attack
-            boss.vy = -12;
-            boss.vx = player.x > boss.x ? 4 : -4;
-        } else {
+            boss.vy = -12 - boss.phase;
+            boss.vx = dx > 0 ? 4 : -4;
+        } else if (boss.attackType === 2) {
             // Ground slam - multiple projectiles
             for (let i = 0; i < (boss.phase + 2); i++) {
                 boss.projectiles.push({
                     x: boss.x + boss.w / 2, y: boss.y,
                     vx: (Math.random() - 0.5) * 6,
                     vy: -4 - Math.random() * 4,
-                    size: 6, life: 90
+                    size: 6, life: 90, type: 'normal'
                 });
             }
+        } else if (boss.attackType === 3 && boss.phase >= 2) {
+            // Circle attack - projectiles in all directions
+            const numProjectiles = 8 + boss.phase * 2;
+            for (let i = 0; i < numProjectiles; i++) {
+                const angle = (Math.PI * 2 / numProjectiles) * i;
+                const speed = 3 + boss.phase;
+                boss.projectiles.push({
+                    x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
+                    vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                    size: 6, life: 100, type: 'normal'
+                });
+            }
+        } else if (boss.attackType === 4 && boss.phase >= 3) {
+            // Homing projectile - follows player
+            const dy = player.y - boss.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            boss.projectiles.push({
+                x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
+                vx: (dx / distance) * 3, vy: (dy / distance) * 3,
+                size: 10, life: 180, type: 'homing', targetX: player.x, targetY: player.y
+            });
         }
     }
 
@@ -978,7 +1017,7 @@ function updateBoss() {
                 boss.projectiles.push({
                     x: boss.x + Math.random() * boss.w, y: 470,
                     vx: (Math.random() - 0.5) * 4, vy: -3 - Math.random() * 3,
-                    size: 5, life: 60
+                    size: 5, life: 60, type: 'normal'
                 });
             }
         }
@@ -991,6 +1030,24 @@ function updateBoss() {
     // Update projectiles
     for (let i = boss.projectiles.length - 1; i >= 0; i--) {
         const p = boss.projectiles[i];
+        
+        // Homing projectile logic
+        if (p.type === 'homing') {
+            const hdx = player.x - p.x;
+            const hdy = player.y - p.y;
+            const hdist = Math.sqrt(hdx * hdx + hdy * hdy);
+            if (hdist > 0) {
+                p.vx += (hdx / hdist) * 0.2;
+                p.vy += (hdy / hdist) * 0.2;
+                // Limit speed
+                const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+                if (speed > 5) {
+                    p.vx = (p.vx / speed) * 5;
+                    p.vy = (p.vy / speed) * 5;
+                }
+            }
+        }
+        
         p.x += p.vx;
         p.y += p.vy;
         p.life--;
@@ -1543,6 +1600,22 @@ function drawBoss() {
     const bx = boss.x - cameraX + (boss.shakeTimer > 0 ? (Math.random() - 0.5) * 6 : 0);
     const by = boss.y;
 
+    // Warning indicator
+    if (boss.warningTimer > 0) {
+        const alpha = boss.warningTimer / 30;
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(bx + boss.w / 2, by + boss.h / 2, 80 + Math.sin(Date.now() / 50) * 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Warning text
+        ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠ WARNUNG ⚠', bx + boss.w / 2, by - 20);
+        ctx.textAlign = 'left';
+    }
+
     // Aura
     const auraSize = 60 + Math.sin(Date.now() / 200) * 10;
     const auraColors = ['rgba(156, 39, 176, 0.15)', 'rgba(233, 30, 99, 0.1)', 'rgba(255, 0, 0, 0.05)'];
@@ -1607,20 +1680,36 @@ function drawBoss() {
     ctx.fillStyle = hpColor;
     ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
 
-    // Boss name
+    // Boss name and phase
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('SCHATTENLORD', W / 2, hpBarY + hpBarH + 18);
+    ctx.fillStyle = boss.phase === 3 ? '#ff1744' : boss.phase === 2 ? '#ff6d00' : '#e040fb';
+    ctx.font = '12px monospace';
+    ctx.fillText('Phase ' + boss.phase, W / 2, hpBarY + hpBarH + 32);
     ctx.textAlign = 'left';
 
     // Projectiles
     boss.projectiles.forEach(p => {
         const px = p.x - cameraX;
-        ctx.fillStyle = boss.phase === 3 ? '#ff1744' : '#e040fb';
-        ctx.beginPath();
-        ctx.arc(px, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        if (p.type === 'homing') {
+            // Homing projectile - red with glow
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.arc(px, p.y, p.size + 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ff1744';
+            ctx.beginPath();
+            ctx.arc(px, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Normal projectile
+            ctx.fillStyle = boss.phase === 3 ? '#ff1744' : '#e040fb';
+            ctx.beginPath();
+            ctx.arc(px, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.arc(px, p.y, p.size * 0.4, 0, Math.PI * 2);
