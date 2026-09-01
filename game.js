@@ -1533,12 +1533,6 @@ function drawGoal() {
         ctx.lineTo(gx + 45 + wave, g.y + 15);
         ctx.lineTo(gx + 22, g.y + 25);
         ctx.fill();
-
-        // Glow
-        ctx.fillStyle = 'rgba(0, 230, 118, 0.1)';
-        ctx.beginPath();
-        ctx.arc(gx + 20, g.y + 30, 30 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
-        ctx.fill();
     }
 }
 
@@ -1845,15 +1839,6 @@ function drawCodeMenu() {
     ctx.font = '16px monospace';
     ctx.fillText('Tippe den Code ein und drücke ENTER', W / 2, 330);
     ctx.fillText('ESC: Zurück zum Hauptmenü', W / 2, 360);
-    
-    // Verfügbare Codes
-    ctx.fillStyle = '#666';
-    ctx.font = '14px monospace';
-    ctx.fillText('Verfügbare Codes:', W / 2, 410);
-    ctx.fillText('4867/first - Level 1', W / 2, 435);
-    ctx.fillText('4867/secound - Level 2', W / 2, 460);
-    ctx.fillText('4867/third - Level 3', W / 2, 485);
-    ctx.fillText('4867/boss - Boss Kampf', W / 2, 510);
 
     ctx.textAlign = 'left';
 }
