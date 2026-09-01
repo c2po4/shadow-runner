@@ -277,9 +277,9 @@ const THEMES = [
 
 // ==================== PLAYER ====================
 const player = {
-    x: 50, y: 3, w: 28, h: 36,
+    x: 50, y: 300, w: 28, h: 36,
     vx: 0, vy: 0,
-    speed: 4.5, jumpForce: -11, gravity: 0.55,
+    speed: 4.5, jumpForce: -13, gravity: 0.5,
     onGround: false, jumping: false,
     facing: 1, frame: 0, frameTimer: 0,
     invincible: 0, dashCooldown: 0,
@@ -541,14 +541,14 @@ function generateLevels() {
             platforms: [
                 { x: 0, y: 480, w: 1200, h: 60 },
                 { x: 100, y: 400, w: 120, h: 20 },
-                { x: 400, y: 360, w: 120, h: 20 },
+                { x: 400, y: 380, w: 120, h: 20 },
                 { x: 700, y: 400, w: 120, h: 20 },
-                { x: 950, y: 360, w: 120, h: 20 },
-                { x: 250, y: 280, w: 100, h: 20 },
-                { x: 550, y: 250, w: 100, h: 20 },
-                { x: 850, y: 280, w: 100, h: 20 },
-                { x: 50, y: 200, w: 80, h: 20 },
-                { x: 1050, y: 200, w: 80, h: 20 },
+                { x: 950, y: 380, w: 120, h: 20 },
+                { x: 250, y: 310, w: 100, h: 20 },
+                { x: 550, y: 290, w: 100, h: 20 },
+                { x: 850, y: 310, w: 100, h: 20 },
+                { x: 50, y: 240, w: 80, h: 20 },
+                { x: 1050, y: 240, w: 80, h: 20 },
             ],
             enemies: [],
             coins: [],
@@ -637,7 +637,7 @@ function updatePlayer() {
 
     // Coyote time - allow jumping shortly after leaving platform
     if (player.onGround) {
-        player.coyoteTime = 6; // 6 frames of coyote time
+        player.coyoteTime = 10; // 10 frames of coyote time (erhöht für besseres Springen)
     } else {
         player.coyoteTime--;
     }
