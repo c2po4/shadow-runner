@@ -947,7 +947,24 @@ function updateBoss() {
 
     if (boss.attackTimer >= attackInterval) {
         boss.attackTimer = 0;
-        boss.attackType = Math.floor(Math.random() * (boss.phase + 3)); // More attack types in higher phases
+        
+        // Intelligente Angriffsauswahl basierend auf Distanz
+        const dx = player.x - boss.x;
+        const dy = player.y - boss.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Wenn Spieler weit weg (> 300px): Bevorzuge Sprung-Angriff (Typ 1)
+        // Wenn Spieler nah (< 300px): Bevorzuge andere Angriffe
+        if (distance > 300 && Math.random() < 0.6) {
+            boss.attackType = 1; // Jump attack
+        } else {
+            // Andere Angriffe zufällig wählen
+            const availableAttacks = [0, 2]; // Shoot, Ground slam
+            if (boss.phase >= 2) availableAttacks.push(3); // Circle attack
+            if (boss.phase >= 3) availableAttacks.push(4); // Homing
+            boss.attackType = availableAttacks[Math.floor(Math.random() * availableAttacks.length)];
+        }
+        
         boss.warningTimer = 30; // Warning before attack
         SoundManager.play('bossAttack');
 
