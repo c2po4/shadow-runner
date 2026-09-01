@@ -271,7 +271,7 @@ function saveSoundSettings() {
 const THEMES = [
     { bg1: '#87CEEB', bg2: '#E0F7FA', ground: '#4CAF50', groundDark: '#388E3C', platform: '#66BB6A', accent: '#81C784', sky: '#87CEEB', name: 'Grüne Wiesen' },
     { bg1: '#1a1a2e', bg2: '#0d1b2a', ground: '#4a4e69', groundDark: '#22223b', platform: '#6c757d', accent: '#9a8c98', sky: '#1b263b', name: 'Dunkle Höhle' },
-    { bg1: '#ffbe0b', bg2: '#fb5607', ground: '#3a86ff', groundDark: '#2667cc', platform: '#8338ec', accent: '#ff006e', sky: '#ffbe0b', name: 'Himmelsfestung' },
+    { bg1: '#ffbe0b', bg2: '#ff8c42', ground: '#3a86ff', groundDark: '#2667cc', platform: '#8338ec', accent: '#ff006e', sky: '#ffbe0b', name: 'Himmelsfestung' },
     { bg1: '#10002b', bg2: '#240046', ground: '#3c096c', groundDark: '#10002b', platform: '#5a189a', accent: '#e040fb', sky: '#1a0033', name: 'Schattenreich' }
 ];
 
