@@ -247,6 +247,10 @@ let bossIntroTimer = 0;
 let codeInput = '';
 let footballMode = false;
 let siuuTimer = 0;
+
+// Fußball-Bild laden
+const footballImage = new Image();
+footballImage.src = 'Download.avif';
 let soundSettings = JSON.parse(localStorage.getItem('soundSettings')) || {
     sfx: 0.5,
     jump: 0.5,
@@ -340,6 +344,7 @@ function generateLevels() {
                 { x: 1650, y: 448, w: 30, h: 32, minX: 1550, maxX: 1820, speed: 1.5, type: 'walker' },
                 { x: 2250, y: 448, w: 30, h: 32, minX: 2200, maxX: 2330, speed: 2, type: 'walker' },
                 { x: 1100, y: 180, w: 32, h: 28, minX: 1000, maxX: 1300, speed: 1.3, type: 'flyer', flyHeight: 35 },
+                { x: 2950, y: 448, w: 30, h: 32, minX: 2850, maxX: 3080, speed: 1.5, type: 'walker', rollsToGoal: true },
             ],
             coins: [
                 { x: 250, y: 450 }, { x: 650, y: 380 }, { x: 2050, y: 370 },
@@ -354,7 +359,6 @@ function generateLevels() {
                 { x: 250, y: 465, w: 60 },
                 { x: 850, y: 465, w: 50 },
                 { x: 1650, y: 465, w: 50 },
-                { x: 2850, y: 465, w: 50 },
             ],
             goal: { x: 3100, y: 420, w: 40, h: 60 },
             playerStart: { x: 50, y: 400 }
@@ -715,20 +719,31 @@ function updatePlayer() {
         if (!e.alive) return;
         if (rectCollide(player, e)) {
             if (player.vy > 0 && player.y + player.h - e.y < 15) {
-                e.alive = false;
-                player.vy = -8;
-                score += 100;
-                SoundManager.play('enemyHit');
-                if (footballMode) {
-                    // Schwarz-weiße Partikel im Football Mode
-                    for (let i = 0; i < 10; i++) {
-                        const color = i % 2 === 0 ? '#000' : '#fff';
-                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, color, 1, 5);
-                    }
+                if (footballMode && e.rollsToGoal) {
+                    // Im Football Mode: Dieser spezifische Gegner rollt als Fußball ins Tor
+                    e.alive = false;
+                    e.rollingFootball = true;
+                    e.rollVx = 3; // Rollgeschwindigkeit
+                    player.vy = -8;
+                    score += 100;
+                    SoundManager.play('enemyHit');
+                    screenShake = 5;
                 } else {
-                    spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff4444', 10, 5);
+                    e.alive = false;
+                    player.vy = -8;
+                    score += 100;
+                    SoundManager.play('enemyHit');
+                    if (footballMode) {
+                        // Schwarz-weiße Partikel im Football Mode
+                        for (let i = 0; i < 10; i++) {
+                            const color = i % 2 === 0 ? '#000' : '#fff';
+                            spawnParticles(e.x + e.w / 2, e.y + e.h / 2, color, 1, 5);
+                        }
+                    } else {
+                        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, '#ff4444', 10, 5);
+                    }
+                    screenShake = 5;
                 }
-                screenShake = 5;
             } else if (player.invincible <= 0) {
                 playerHit();
             }
@@ -801,6 +816,45 @@ function playerDie() {
 // ==================== ENEMIES ====================
 function updateEnemies() {
     activeEnemies.forEach(e => {
+        // Rollende Fußbälle im Football Mode
+        if (e.rollingFootball) {
+            e.x += e.rollVx;
+            e.rollRotation = (e.rollRotation || 0) + 0.3;
+            // Bleibt im Tor liegen
+            if (level.goal && e.x >= level.goal.x) {
+                e.rollingFootball = false;
+                e.inGoal = true; // Ball liegt im Tor
+                e.goalTimer = 90; // 1.5 Sekunden bei 60 FPS
+                // SIUUU-Sound abspielen
+                if (!e.goalSoundPlayed) {
+                    SoundManager.play('ronaldo');
+                    e.goalSoundPlayed = true;
+                }
+            } else if (e.x > level.width || e.x < -100) {
+                e.rollingFootball = false;
+            }
+            return;
+        }
+
+        // Ball im Tor - Timer zählen
+        if (e.inGoal) {
+            if (e.goalTimer > 0) {
+                e.goalTimer--;
+                if (e.goalTimer <= 0) {
+                    // Level geschafft!
+                    gameState = STATE.LEVEL_COMPLETE;
+                    stateTimer = 120;
+                    SoundManager.play('levelComplete');
+                    if (footballMode) {
+                        SoundManager.play('ronaldo');
+                        siuuTimer = 90;
+                    }
+                    spawnParticles(level.goal.x + 20, level.goal.y + 30, '#00ff88', 20, 8);
+                }
+            }
+            return;
+        }
+
         if (!e.alive) return;
 
         if (e.type === 'flyer') {
@@ -1087,71 +1141,204 @@ function drawPlayer() {
 
 function drawEnemies() {
     activeEnemies.forEach(e => {
-        if (!e.alive) return;
-        const ex = e.x - cameraX;
-        if (ex + e.w < -50 || ex > W + 50) return;
-
-        // Football Mode: Alle Gegner als Fußbälle zeichnen
-        if (footballMode) {
+        // Ball im Tor zeichnen (liegt still)
+        if (e.inGoal) {
+            const ex = e.x - cameraX;
+            if (ex + e.w < -50 || ex > W + 50) return;
+            
             const cx = ex + e.w / 2;
             const cy = e.y + e.h / 2;
             const radius = e.w / 2;
             
-            // Fußball Basis (weiß)
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Schwarze Pentagone (echtes Fußball-Muster)
-            ctx.fillStyle = '#000';
-            
-            // Zentraler Pentagon
-            ctx.beginPath();
-            const centerSize = radius * 0.35;
-            for (let i = 0; i < 5; i++) {
-                const angle = (i * 2 * Math.PI / 5) - Math.PI / 2;
-                const x = cx + Math.cos(angle) * centerSize;
-                const y = cy + Math.sin(angle) * centerSize;
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fill();
-            
-            // 5 äußere Pentagone an den Ecken
-            for (let j = 0; j < 5; j++) {
-                const baseAngle = (j * 2 * Math.PI / 5) + Math.PI / 5;
-                const dist = radius * 0.7;
-                const px = cx + Math.cos(baseAngle) * dist;
-                const py = cy + Math.sin(baseAngle) * dist;
-                
+            // Fußball-Bild zeichnen (ohne Rotation)
+            if (footballImage.complete && footballImage.naturalWidth > 0) {
+                ctx.save();
+                ctx.translate(cx, cy);
                 ctx.beginPath();
-                const outerSize = radius * 0.22;
-                for (let i = 0; i < 5; i++) {
-                    const angle = baseAngle + (i * 2 * Math.PI / 5);
-                    const x = px + Math.cos(angle) * outerSize;
-                    const y = py + Math.sin(angle) * outerSize;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(footballImage, -radius, -radius, radius * 2, radius * 2);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
                 ctx.fill();
             }
             
-            // Umriss
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1.5;
+            // 3D-Effekt
+            const shadowGradient = ctx.createRadialGradient(
+                cx + radius * 0.5, cy + radius * 0.5, 0,
+                cx, cy, radius
+            );
+            shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+            shadowGradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.3)');
+            shadowGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
+            shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadowGradient;
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-            ctx.stroke();
+            ctx.fill();
             
-            // Leichter 3D-Effekt mit Gradient
-            const gradient = ctx.createRadialGradient(cx - radius * 0.3, cy - radius * 0.3, 0, cx, cy, radius);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-            gradient.addColorStop(0.7, 'rgba(255, 255, 255, 0)');
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.15)');
-            ctx.fillStyle = gradient;
+            const highlightGradient = ctx.createRadialGradient(
+                cx - radius * 0.6, cy - radius * 0.6, 0,
+                cx - radius * 0.6, cy - radius * 0.6, radius * 0.8
+            );
+            highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            highlightGradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+            highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+            highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = highlightGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Timer-Anzeige (Countdown)
+            if (e.goalTimer > 0) {
+                const progress = e.goalTimer / 90;
+                ctx.fillStyle = `rgba(0, 255, 136, ${progress})`;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius + 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            return;
+        }
+
+        // Rollende Fußbälle im Football Mode zeichnen
+        if (e.rollingFootball) {
+            const ex = e.x - cameraX;
+            if (ex + e.w < -50 || ex > W + 50) return;
+            
+            const cx = ex + e.w / 2;
+            const cy = e.y + e.h / 2;
+            const radius = e.w / 2;
+            
+            // Fußball-Bild zeichnen (mit Rotation)
+            if (footballImage.complete && footballImage.naturalWidth > 0) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(e.rollRotation || 0);
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.clip();
+                ctx.drawImage(footballImage, -radius, -radius, radius * 2, radius * 2);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 3D-Effekt
+            const shadowGradient = ctx.createRadialGradient(
+                cx + radius * 0.5, cy + radius * 0.5, 0,
+                cx, cy, radius
+            );
+            shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+            shadowGradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.3)');
+            shadowGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
+            shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadowGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            const highlightGradient = ctx.createRadialGradient(
+                cx - radius * 0.6, cy - radius * 0.6, 0,
+                cx - radius * 0.6, cy - radius * 0.6, radius * 0.8
+            );
+            highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            highlightGradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+            highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+            highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = highlightGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            return;
+        }
+
+        if (!e.alive) return;
+        const ex = e.x - cameraX;
+        if (ex + e.w < -50 || ex > W + 50) return;
+
+        // Football Mode: Alle Gegner als 3D-Fußbälle zeichnen
+        if (footballMode) {
+            const cx = ex + e.w / 2;
+            const cy = e.y + e.h / 2;
+            const radius = e.w / 2;
+
+            // Rotation für rollenden Effekt
+            // Walker: immer rollen (langsamer)
+            // Jumper: nur rollen wenn auf dem Boden
+            // Flyer: nie rollen
+            let rotation = 0;
+            if (e.type === 'walker') {
+                rotation = (Date.now() / 500 + e.x) % (Math.PI * 2);
+            } else if (e.type === 'jumper' && e.onGround) {
+                rotation = (Date.now() / 500 + e.x) % (Math.PI * 2);
+            }
+            
+            // Fußball-Bild zeichnen (mit Kreis-Clip und Rotation)
+            if (footballImage.complete && footballImage.naturalWidth > 0) {
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(rotation);
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.clip();
+                
+                // Bild auf Ball-Größe zeichnen (zentriert)
+                ctx.drawImage(footballImage, -radius, -radius, radius * 2, radius * 2);
+                ctx.restore();
+            } else {
+                // Fallback: Weißer Kreis wenn Bild noch nicht geladen
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 3D-Kugel-Effekt mit starkem Licht/Schatten
+            // Haupt-Schatten (dunkel unten rechts)
+            const shadowGradient = ctx.createRadialGradient(
+                cx + radius * 0.5, cy + radius * 0.5, 0,
+                cx, cy, radius
+            );
+            shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+            shadowGradient.addColorStop(0.4, 'rgba(0, 0, 0, 0.3)');
+            shadowGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.1)');
+            shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = shadowGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Haupt-Highlight (sehr hell oben links)
+            const highlightGradient = ctx.createRadialGradient(
+                cx - radius * 0.6, cy - radius * 0.6, 0,
+                cx - radius * 0.6, cy - radius * 0.6, radius * 0.8
+            );
+            highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            highlightGradient.addColorStop(0.2, 'rgba(255, 255, 255, 0.8)');
+            highlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
+            highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = highlightGradient;
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Sekundäres Highlight (kleiner, intensiver)
+            const smallHighlight = ctx.createRadialGradient(
+                cx - radius * 0.4, cy - radius * 0.4, 0,
+                cx - radius * 0.4, cy - radius * 0.4, radius * 0.3
+            );
+            smallHighlight.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            smallHighlight.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = smallHighlight;
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
             ctx.fill();
@@ -1265,77 +1452,82 @@ function drawGoal() {
     const gx = g.x - cameraX;
 
     if (footballMode) {
-        // Fußballtor von der Seite gesehen (perspektivisch)
-        const goalWidth = 80;
-        const goalHeight = 50;
+        // Fußballtor von der Seite gesehen (wie Jugendtor)
+        const goalHeight = 90;
         const goalX = gx + 10;
         const goalY = g.y + g.h - goalHeight;
-        const depth = 20; // Tiefe des Tors
+        const depth = 45; // Tiefe des Tors
+        const backHeight = goalHeight * 0.7; // Hintere Höhe ist niedriger
+
+        // Torpfosten (silber/grau) - vorderer Pfosten
+        const postGradient = ctx.createLinearGradient(goalX, 0, goalX + 8, 0);
+        postGradient.addColorStop(0, '#c0c0c0');
+        postGradient.addColorStop(0.5, '#e8e8e8');
+        postGradient.addColorStop(1, '#a0a0a0');
+        ctx.fillStyle = postGradient;
+        ctx.fillRect(goalX, goalY, 8, goalHeight);
         
-        // Torpfosten (weiß) - perspektivisch
-        ctx.fillStyle = '#fff';
-        // Vorderer linker Pfosten
-        ctx.fillRect(goalX, goalY, 5, goalHeight);
-        // Hinterer linker Pfosten (etwas kleiner/versetzt für Perspektive)
-        ctx.fillRect(goalX + depth, goalY + 5, 4, goalHeight - 10);
+        // Hinterer Pfosten (kleiner, weiter hinten)
+        const backPostX = goalX + depth - 6;
+        ctx.fillRect(backPostX, goalY + (goalHeight - backHeight), 6, backHeight);
         
-        // Vorderer rechter Pfosten
-        ctx.fillRect(goalX + goalWidth, goalY, 5, goalHeight);
-        // Hinterer rechter Pfosten
-        ctx.fillRect(goalX + goalWidth - depth, goalY + 5, 4, goalHeight - 10);
-        
-        // Querlatte vorne
-        ctx.fillRect(goalX, goalY, goalWidth + 5, 5);
-        // Querlatte hinten
-        ctx.fillRect(goalX + depth, goalY + 5, goalWidth - depth * 2, 4);
-        
-        // Verbindungslinien für 3D-Effekt
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 3;
-        // Obere linke Verbindung
+        // Obere Querlatte (verbindet vorne und hinten)
+        ctx.strokeStyle = '#c0c0c0';
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(goalX + 5, goalY);
-        ctx.lineTo(goalX + depth, goalY + 5);
-        ctx.stroke();
-        // Obere rechte Verbindung
-        ctx.beginPath();
-        ctx.moveTo(goalX + goalWidth, goalY);
-        ctx.lineTo(goalX + goalWidth - depth, goalY + 5);
+        ctx.moveTo(goalX + 4, goalY);
+        ctx.lineTo(backPostX + 3, goalY + (goalHeight - backHeight));
         ctx.stroke();
         
-        // Netz (graue Linien) - perspektivisch
-        ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
+        // Untere Querlatte
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(goalX + 4, goalY + goalHeight);
+        ctx.lineTo(backPostX + 3, goalY + goalHeight);
+        ctx.stroke();
+        
+        // Netz (weißes Gitter)
+        ctx.strokeStyle = 'rgba(220, 220, 220, 0.8)';
         ctx.lineWidth = 1;
         
-        // Vertikale Netzlinien (mit Perspektive)
-        for (let i = 1; i < 6; i++) {
-            const frontX = goalX + 5 + i * (goalWidth - 5) / 6;
-            const backX = goalX + depth + i * (goalWidth - depth * 2) / 6;
+        // Vertikale Netzlinien (bleiben zwischen den Pfosten)
+        const netLines = 10;
+        for (let i = 1; i < netLines; i++) {
+            const progress = i / netLines;
+            const x = goalX + 8 + progress * (depth - 14);
+            // Obere Grenze folgt der diagonalen Querlatte
+            const topY = goalY + progress * (goalHeight - backHeight);
+            const bottomY = goalY + goalHeight;
             ctx.beginPath();
-            ctx.moveTo(frontX, goalY + 5);
-            ctx.lineTo(backX, goalY + 9);
-            ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.moveTo(frontX, goalY + 5);
-            ctx.lineTo(frontX, goalY + goalHeight);
+            ctx.moveTo(x, topY);
+            ctx.lineTo(x, bottomY);
             ctx.stroke();
         }
         
-        // Horizontale Netzlinien
+        // Horizontale Netzlinien (bleiben im Torrahmen)
+        const horizontalLines = 7;
+        for (let i = 1; i < horizontalLines; i++) {
+            const progress = i / horizontalLines;
+            // Starte unterhalb der diagonalen Querlatte
+            const y = goalY + (goalHeight - backHeight) + progress * backHeight;
+            const leftX = goalX + 8;
+            const rightX = goalX + depth - 6;
+            ctx.beginPath();
+            ctx.moveTo(leftX, y);
+            ctx.lineTo(rightX, y);
+            ctx.stroke();
+        }
+        
+        // Seitliches Netz (rechte Seite, bleibt im Rahmen)
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
         for (let i = 1; i < 5; i++) {
-            const y = goalY + 5 + i * (goalHeight - 5) / 5;
+            const progress = i / 5;
+            const y = goalY + (goalHeight - backHeight) + progress * backHeight;
             ctx.beginPath();
-            ctx.moveTo(goalX + 5, y);
-            ctx.lineTo(goalX + goalWidth, y);
+            ctx.moveTo(goalX + depth - 6, y);
+            ctx.lineTo(goalX + depth, y);
             ctx.stroke();
         }
-        
-        // Glow-Effekt
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.beginPath();
-        ctx.arc(gx + 40, g.y + 30, 35 + Math.sin(Date.now() / 300) * 5, 0, Math.PI * 2);
-        ctx.fill();
     } else {
         // Normale Flagge
         // Flag pole
