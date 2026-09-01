@@ -522,7 +522,7 @@ function generateLevels() {
                 { x: 2680, y: 310 }, { x: 2820, y: 250 }, { x: 2940, y: 310 },
             ],
             spikes: [
-                { x: 100, y: 465, w: 40 },  // auf Plattform (x=0-200)
+                { x: 80, y: 465, w: 60 },  // auf Plattform (x=0-200) - deutlicher
                 { x: 820, y: 465, w: 40 },  // auf Plattform (x=780-900)
                 { x: 1380, y: 465, w: 40 }, // auf Plattform (x=1320-1470)
                 { x: 1900, y: 465, w: 40 }, // auf Plattform (x=1850-2000)
@@ -1192,15 +1192,6 @@ function drawEnemies() {
             ctx.beginPath();
             ctx.arc(cx, cy, radius, 0, Math.PI * 2);
             ctx.fill();
-
-            // Timer-Anzeige (Countdown)
-            if (e.goalTimer > 0) {
-                const progress = e.goalTimer / 90;
-                ctx.fillStyle = `rgba(0, 255, 136, ${progress})`;
-                ctx.beginPath();
-                ctx.arc(cx, cy, radius + 5, 0, Math.PI * 2);
-                ctx.fill();
-            }
 
             return;
         }
