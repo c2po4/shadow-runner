@@ -1059,6 +1059,10 @@ function updateBoss() {
         
         p.x += p.vx;
         p.y += p.vy;
+        // Schwerkraft für normale Projektile, damit sie nach ~1.8s (108 Frames) wieder fallen
+        if (p.type === 'normal') {
+            p.vy += 0.15;
+        }
         p.life--;
         if (p.life <= 0 || p.y > H + 20 || p.x < -20 || p.x > level.width + 20) {
             boss.projectiles.splice(i, 1);
