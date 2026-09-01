@@ -547,6 +547,8 @@ function generateLevels() {
                 { x: 250, y: 280, w: 100, h: 20 },
                 { x: 550, y: 250, w: 100, h: 20 },
                 { x: 850, y: 280, w: 100, h: 20 },
+                { x: 50, y: 200, w: 80, h: 20 },
+                { x: 1050, y: 200, w: 80, h: 20 },
             ],
             enemies: [],
             coins: [],
@@ -936,17 +938,8 @@ function updateBoss() {
         SoundManager.play('bossPhase');
     }
 
-    // Boss AI - smarter movement
-    const dx = player.x - boss.x;
-    const dist = Math.abs(dx);
-    
-    // Boss tries to maintain optimal distance
-    const optimalDist = 200;
-    if (dist < optimalDist - 50) {
-        boss.vx += (dx > 0 ? -0.3 : 0.3); // Move away
-    } else if (dist > optimalDist + 50) {
-        boss.vx += (dx > 0 ? 0.3 : -0.3); // Move closer
-    }
+    // Boss AI - no automatic movement toward player
+    // Boss only moves during specific attacks
 
     // Boss AI
     boss.attackTimer++;
@@ -960,6 +953,7 @@ function updateBoss() {
 
         if (boss.attackType === 0) {
             // Shoot projectiles toward player
+            const dx = player.x - boss.x;
             const dy = player.y - boss.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const speed = 4 + boss.phase;
@@ -976,7 +970,8 @@ function updateBoss() {
                 });
             }
         } else if (boss.attackType === 1) {
-            // Jump attack
+            // Jump attack - move toward player
+            const dx = player.x - boss.x;
             boss.vy = -12 - boss.phase;
             boss.vx = dx > 0 ? 4 : -4;
         } else if (boss.attackType === 2) {
@@ -1003,6 +998,7 @@ function updateBoss() {
             }
         } else if (boss.attackType === 4 && boss.phase >= 3) {
             // Homing projectile - follows player
+            const dx = player.x - boss.x;
             const dy = player.y - boss.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             boss.projectiles.push({
@@ -1013,16 +1009,17 @@ function updateBoss() {
         }
     }
 
-    // Boss physics
+    // Boss physics - no automatic movement
     boss.vy += 0.5;
     boss.x += boss.vx;
     boss.y += boss.vy;
-    boss.vx *= 0.95;
+    boss.vx *= 0.95; // Friction to slow down
 
     // Ground collision
     if (boss.y + boss.h > 480) {
         boss.y = 480 - boss.h;
         boss.vy = 0;
+        boss.vx *= 0.5; // Extra friction on ground
         if (boss.phase >= 2 && Math.abs(boss.vx) > 1) {
             screenShake = 5;
             for (let i = 0; i < 5; i++) {
@@ -1035,9 +1032,9 @@ function updateBoss() {
         }
     }
 
-    // Boundaries
-    if (boss.x < 20) { boss.x = 20; boss.vx = Math.abs(boss.vx); }
-    if (boss.x + boss.w > level.width - 20) { boss.x = level.width - 20 - boss.w; boss.vx = -Math.abs(boss.vx); }
+    // Boundaries - boss bounces off walls
+    if (boss.x < 20) { boss.x = 20; boss.vx = Math.abs(boss.vx) * 0.5; }
+    if (boss.x + boss.w > level.width - 20) { boss.x = level.width - 20 - boss.w; boss.vx = -Math.abs(boss.vx) * 0.5; }
 
     // Update projectiles
     for (let i = boss.projectiles.length - 1; i >= 0; i--) {
