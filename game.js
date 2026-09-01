@@ -277,13 +277,14 @@ const THEMES = [
 
 // ==================== PLAYER ====================
 const player = {
-    x: 50, y: 300, w: 28, h: 36,
+    x: 50, y: 3, w: 28, h: 36,
     vx: 0, vy: 0,
     speed: 4.5, jumpForce: -11, gravity: 0.55,
     onGround: false, jumping: false,
     facing: 1, frame: 0, frameTimer: 0,
     invincible: 0, dashCooldown: 0,
-    trail: []
+    trail: [],
+    coyoteTime: 0 // Coyote time for better jumping
 };
 
 function resetPlayer() {
@@ -291,6 +292,7 @@ function resetPlayer() {
     player.vx = 0; player.vy = 0;
     player.onGround = false; player.jumping = false;
     player.invincible = 0; player.trail = [];
+    player.coyoteTime = 0;
 }
 
 // ==================== LEVEL DATA ====================
@@ -631,15 +633,23 @@ function rectCollide(a, b) {
 function updatePlayer() {
     if (player.invincible > 0) player.invincible--;
 
+    // Coyote time - allow jumping shortly after leaving platform
+    if (player.onGround) {
+        player.coyoteTime = 6; // 6 frames of coyote time
+    } else {
+        player.coyoteTime--;
+    }
+
     // Horizontal movement
     if (isLeft()) { player.vx = -player.speed; player.facing = -1; }
     else if (isRight()) { player.vx = player.speed; player.facing = 1; }
     else { player.vx *= 0.7; if (Math.abs(player.vx) < 0.1) player.vx = 0; }
 
-    // Jump
-    if (isJump() && player.onGround && !player.jumping) {
+    // Jump - with coyote time for better platform jumping
+    if (isJump() && player.coyoteTime > 0 && !player.jumping) {
         player.vy = player.jumpForce;
         player.onGround = false;
+        player.coyoteTime = 0;
         player.jumping = true;
         SoundManager.play('jump');
         spawnParticles(player.x + player.w / 2, player.y + player.h, '#fff', 5, 3);
@@ -654,7 +664,7 @@ function updatePlayer() {
     player.x += player.vx;
     player.onGround = false;
 
-    // Platform collision X
+    // Platform collision X - only for solid platforms
     level.platforms.forEach(p => {
         if (rectCollide(player, p)) {
             if (player.vx > 0) player.x = p.x - player.w;
@@ -666,14 +676,16 @@ function updatePlayer() {
     // Move Y
     player.y += player.vy;
 
-    // Platform collision Y
+    // Platform collision Y - improved for better jumping
     level.platforms.forEach(p => {
         if (rectCollide(player, p)) {
-            if (player.vy > 0) {
+            // Only land on top of platform when falling
+            if (player.vy > 0 && player.y + player.h - player.vy <= p.y + 10) {
                 player.y = p.y - player.h;
                 player.vy = 0;
                 player.onGround = true;
             } else if (player.vy < 0) {
+                // Hit head on platform
                 player.y = p.y + p.h;
                 player.vy = 0;
             }
