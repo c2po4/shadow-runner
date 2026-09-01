@@ -1845,6 +1845,15 @@ function drawCodeMenu() {
     ctx.font = '16px monospace';
     ctx.fillText('Tippe den Code ein und drücke ENTER', W / 2, 330);
     ctx.fillText('ESC: Zurück zum Hauptmenü', W / 2, 360);
+    
+    // Verfügbare Codes
+    ctx.fillStyle = '#666';
+    ctx.font = '14px monospace';
+    ctx.fillText('Verfügbare Codes:', W / 2, 410);
+    ctx.fillText('4867/first - Level 1', W / 2, 435);
+    ctx.fillText('4867/secound - Level 2', W / 2, 460);
+    ctx.fillText('4867/third - Level 3', W / 2, 485);
+    ctx.fillText('4867/boss - Boss Kampf', W / 2, 510);
 
     ctx.textAlign = 'left';
 }
@@ -2048,6 +2057,27 @@ function update() {
                     loadLevel(3);
                     gameState = STATE.BOSS_INTRO;
                     bossIntroTimer = 120;
+                    SoundManager.play('menuSelect');
+                } else if (codeInput === '4867/first') {
+                    currentLevel = 0;
+                    score = 0;
+                    lives = 3;
+                    loadLevel(0);
+                    gameState = STATE.PLAYING;
+                    SoundManager.play('menuSelect');
+                } else if (codeInput === '4867/secound') {
+                    currentLevel = 1;
+                    score = 0;
+                    lives = 3;
+                    loadLevel(1);
+                    gameState = STATE.PLAYING;
+                    SoundManager.play('menuSelect');
+                } else if (codeInput === '4867/third') {
+                    currentLevel = 2;
+                    score = 0;
+                    lives = 3;
+                    loadLevel(2);
+                    gameState = STATE.PLAYING;
                     SoundManager.play('menuSelect');
                 } else if (codeInput === '_5646') {
                     footballMode = true;
