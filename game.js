@@ -960,13 +960,13 @@ function updateBoss() {
             boss.projectiles.push({
                 x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
                 vx: (dx / distance) * speed, vy: (dy / distance) * speed,
-                size: 8, life: 120, type: 'normal'
+                size: 8, life: 300, type: 'normal', gravity: false
             });
             if (boss.phase >= 2) {
                 boss.projectiles.push({
                     x: boss.x + boss.w / 2, y: boss.y + boss.h / 2,
                     vx: (dx / distance) * speed * 0.8, vy: (dy / distance) * speed * 0.8 - 2,
-                    size: 6, life: 120, type: 'normal'
+                    size: 6, life: 300, type: 'normal', gravity: false
                 });
             }
         } else if (boss.attackType === 1) {
@@ -1059,8 +1059,8 @@ function updateBoss() {
         
         p.x += p.vx;
         p.y += p.vy;
-        // Schwerkraft für normale Projektile, damit sie nach ~1.8s (108 Frames) wieder fallen
-        if (p.type === 'normal') {
+        // Schwerkraft für normale Projektile (außer wenn gravity: false gesetzt ist)
+        if (p.type === 'normal' && p.gravity !== false) {
             p.vy += 0.15;
         }
         p.life--;
